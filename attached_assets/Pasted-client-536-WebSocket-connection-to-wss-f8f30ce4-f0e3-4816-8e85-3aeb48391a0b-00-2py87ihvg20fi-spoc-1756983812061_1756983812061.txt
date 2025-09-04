@@ -1,0 +1,41 @@
+client:536 WebSocket connection to 'wss://f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/?token=5CyVCobLnq1Z' failed: 
+t @ Network.js:227
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+Network.js:227 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=5CyVCobLnq1Z' is invalid.
+    at new t (Network.js:227:18)
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+t @ Network.js:227
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+Console.js:61 Get current user error: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at apiRequest (api.ts:68:19)
+    at async Object.getCurrentUser (api.ts:75:14)
+    at async handleBotMatch (Home.tsx:72:27)
+Mt.forEach.n.<computed> @ Console.js:61
+getCurrentUser @ api.ts:77
+await in getCurrentUser
+handleBotMatch @ Home.tsx:72
+handlePracticeGame @ Home.tsx:142
+callCallback2 @ chunk-WERSD76P.js?v=259a7f95:3674
+invokeGuardedCallbackDev @ chunk-WERSD76P.js?v=259a7f95:3699
+invokeGuardedCallback @ chunk-WERSD76P.js?v=259a7f95:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-WERSD76P.js?v=259a7f95:3736
+executeDispatch @ chunk-WERSD76P.js?v=259a7f95:7014
+processDispatchQueueItemsInOrder @ chunk-WERSD76P.js?v=259a7f95:7034
+processDispatchQueue @ chunk-WERSD76P.js?v=259a7f95:7043
+dispatchEventsForPlugins @ chunk-WERSD76P.js?v=259a7f95:7051
+(anonymous) @ chunk-WERSD76P.js?v=259a7f95:7174
+batchedUpdates$1 @ chunk-WERSD76P.js?v=259a7f95:18913
+batchedUpdates @ chunk-WERSD76P.js?v=259a7f95:3579
+dispatchEventForPluginEventSystem @ chunk-WERSD76P.js?v=259a7f95:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-WERSD76P.js?v=259a7f95:5478
+dispatchEvent @ chunk-WERSD76P.js?v=259a7f95:5472
+dispatchDiscreteEvent @ chunk-WERSD76P.js?v=259a7f95:5449Understand this error
+Console.js:61 Get current user error: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at apiRequest (api.ts:68:19)
+    at async Object.getCurrentUser (api.ts:75:14)
+    at async handleBotMatch (Home.tsx:72:27)
