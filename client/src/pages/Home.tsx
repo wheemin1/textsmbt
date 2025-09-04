@@ -72,7 +72,7 @@ export default function Home() {
       const currentUser = await api.getCurrentUser();
       if (currentUser?.id) {
         userId = currentUser.id;
-        localStorage.setItem('userId', userId);
+        localStorage.setItem('userId', currentUser.id);
       } else {
         // No session user, try to use localStorage userId if available
         if (!userId) {

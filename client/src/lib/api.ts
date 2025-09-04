@@ -1,4 +1,4 @@
-import { apiRequest } from "./queryClient";
+import { apiRequest as makeApiRequest } from "./queryClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
