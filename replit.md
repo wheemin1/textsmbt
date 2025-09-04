@@ -6,6 +6,21 @@ This is a Korean word similarity battle game where players compete in 5-round ma
 
 Preferred communication style: Simple, everyday language.
 
+# Deployment and Development Setup
+
+## External Deployment Configuration
+The application is configured for external deployment using Replit Deployments with Autoscale option. Environment variables are managed through .env files with a template provided in .env.example. The application supports production deployment with proper database connections and session management.
+
+## Local VSCode Development Setup
+Complete VSCode configuration is provided for local development including:
+- TypeScript debugging configuration with launch.json
+- Development server tasks in tasks.json  
+- Recommended extensions for React/TypeScript development
+- Code formatting and linting settings
+- Tailwind CSS IntelliSense support
+
+Local development workflow: Clone repository → Install dependencies → Configure .env → Run `npm run dev`
+
 # System Architecture
 
 ## Frontend Architecture
