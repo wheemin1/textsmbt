@@ -1,0 +1,296 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { storage } from "./storage";
+import { gameEngine } from "./services/gameEngine";
+import { word2vecService } from "./services/word2vec";
+import { z } from "zod";
+
+// Request validation schemas
+const joinQueueSchema = z.object({
+  userId: z.string(),
+  language: z.string().default("ko")
+});
+
+const submitWordSchema = z.object({
+  gameId: z.string(),
+  userId: z.string(),
+  word: z.string().min(1).max(50)
+});
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  const httpServer = createServer(app);
+
+  // WebSocket server for real-time game updates
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const gameConnections = new Map<string, Set<WebSocket>>();
+
+  wss.on('connection', (ws: WebSocket, req) => {
+    console.log('WebSocket connection established');
+    
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        if (data.type === 'join_game' && data.gameId) {
+          // Add connection to game room
+          if (!gameConnections.has(data.gameId)) {
+            gameConnections.set(data.gameId, new Set());
+          }
+          gameConnections.get(data.gameId)!.add(ws);
+          
+          ws.on('close', () => {
+            gameConnections.get(data.gameId)?.delete(ws);
+          });
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+  });
+
+  // Broadcast to all clients in a game
+  function broadcastToGame(gameId: string, message: any) {
+    const connections = gameConnections.get(gameId);
+    if (connections) {
+      const messageStr = JSON.stringify(message);
+      connections.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(messageStr);
+        }
+      });
+    }
+  }
+
+  // Health check
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      ok: true, 
+      serverTime: new Date().toISOString(),
+      wordsLoaded: word2vecService.isValidWord("가족")
+    });
+  });
+
+  // Create or get user by nickname
+  app.post("/api/users", async (req, res) => {
+    try {
+      const { nickname } = req.body;
+      
+      if (!nickname || nickname.length < 2) {
+        return res.status(400).json({ error: "INVALID_NICKNAME", message: "닉네임은 2글자 이상이어야 합니다" });
+      }
+
+      // Try to find existing user
+      let user = await storage.getUserByNickname(nickname);
+      
+      if (!user) {
+        // Create new user
+        user = await storage.createUser({ nickname });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error('Create user error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "서버 오류가 발생했습니다" });
+    }
+  });
+
+  // Join matchmaking queue
+  app.post("/api/queue/join", async (req, res) => {
+    try {
+      const validatedData = joinQueueSchema.parse(req.body);
+      const { userId, language } = validatedData;
+
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "USER_NOT_FOUND", message: "사용자를 찾을 수 없습니다" });
+      }
+
+      // Remove user from any existing queue
+      await storage.removeFromQueue(userId);
+
+      // Look for existing match
+      const match = await storage.findQueueMatch(userId, language);
+      
+      if (match) {
+        // Found a match! Create game
+        await storage.removeFromQueue(match.userId);
+        const game = await gameEngine.createGame(userId, match.userId, false);
+        
+        res.json({
+          gameId: game.id,
+          isBot: false,
+          opponent: {
+            nickname: (await storage.getUser(match.userId))?.nickname || "상대방"
+          }
+        });
+      } else {
+        // Add to queue
+        await storage.addToQueue({ userId, language });
+        
+        // Set timeout for bot match
+        setTimeout(async () => {
+          try {
+            // Check if still in queue
+            const position = await storage.getQueuePosition(userId);
+            if (position > 0) {
+              // Create bot game
+              await storage.removeFromQueue(userId);
+              const game = await gameEngine.createGame(userId, undefined, true);
+              
+              // Notify client via WebSocket
+              broadcastToGame(game.id, {
+                type: 'game_found',
+                gameId: game.id,
+                isBot: true,
+                botDifficulty: 'normal'
+              });
+            }
+          } catch (error) {
+            console.error('Bot match timeout error:', error);
+          }
+        }, 12000); // 12 seconds
+
+        res.json({
+          queuePosition: 1,
+          estimatedWait: "최대 12초"
+        });
+      }
+    } catch (error) {
+      console.error('Join queue error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "VALIDATION_ERROR", message: "잘못된 요청 데이터" });
+      }
+      res.status(500).json({ error: "SERVER_ERROR", message: "매칭 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Submit word for current round
+  app.post("/api/game/submit", async (req, res) => {
+    try {
+      const validatedData = submitWordSchema.parse(req.body);
+      const { gameId, userId, word } = validatedData;
+
+      const result = await gameEngine.submitWord(gameId, userId, word);
+      
+      // Broadcast round result when complete
+      if (result.roundComplete) {
+        broadcastToGame(gameId, {
+          type: 'round_complete',
+          result
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('Submit word error:', error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "VALIDATION_ERROR", message: "잘못된 요청 데이터" });
+      }
+      
+      const message = error instanceof Error ? error.message : "단어 제출 중 오류가 발생했습니다";
+      
+      if (message.includes("Invalid word")) {
+        return res.status(400).json({ error: "INVALID_WORD", message: "사전에 없는 단어입니다" });
+      } else if (message.includes("Already submitted")) {
+        return res.status(409).json({ error: "ALREADY_SUBMITTED", message: "이미 이 라운드에 단어를 제출했습니다" });
+      } else if (message.includes("already used this word")) {
+        return res.status(409).json({ error: "WORD_CONFLICT", message: "상대방이 이미 사용한 단어입니다" });
+      } else if (message.includes("previous round")) {
+        return res.status(409).json({ error: "WORD_REUSE", message: "이전 라운드에서 사용한 단어는 다시 사용할 수 없습니다" });
+      }
+      
+      res.status(500).json({ error: "SERVER_ERROR", message });
+    }
+  });
+
+  // Get game status
+  app.get("/api/game-status/:gameId", async (req, res) => {
+    try {
+      const { gameId } = req.params;
+      const game = await storage.getGame(gameId);
+      
+      if (!game) {
+        // Return dummy state instead of 404 to prevent client errors
+        return res.json({
+          gameId,
+          status: "not_found",
+          currentRound: 1,
+          timeRemaining: 0,
+          rounds: [],
+          myBestScore: 0,
+          opponentBestScore: 0
+        });
+      }
+
+      const submissions = await storage.getGameSubmissions(gameId);
+      const rounds = Array.isArray(game.rounds) ? game.rounds : [];
+      
+      // Calculate best scores
+      const myScores = submissions
+        .filter(s => s.userId === game.player1Id)
+        .map(s => s.score);
+      const opponentScores = submissions
+        .filter(s => s.userId === game.player2Id || s.userId === "bot")
+        .map(s => s.score);
+
+      res.json({
+        gameId,
+        status: game.status,
+        currentRound: game.currentRound,
+        timeRemaining: 15, // TODO: Calculate actual remaining time
+        rounds,
+        myBestScore: myScores.length > 0 ? Math.max(...myScores) : 0,
+        opponentBestScore: opponentScores.length > 0 ? Math.max(...opponentScores) : 0,
+        isBot: game.isBot,
+        opponent: {
+          nickname: game.isBot ? "AI 봇" : "상대방", // TODO: Get actual opponent nickname
+          type: game.isBot ? "bot" : "human"
+        }
+      });
+    } catch (error) {
+      console.error('Get game status error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "게임 상태 조회 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Get word suggestions for autocomplete
+  app.get("/api/words/suggest", (req, res) => {
+    try {
+      const { q, limit } = req.query;
+      const query = (q as string) || "";
+      const maxResults = Math.min(parseInt(limit as string) || 8, 20);
+      
+      const suggestions = word2vecService.getSuggestions(query, maxResults);
+      res.json({ suggestions });
+    } catch (error) {
+      console.error('Word suggestions error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "단어 검색 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Validate word endpoint
+  app.post("/api/words/validate", (req, res) => {
+    try {
+      const { word } = req.body;
+      
+      if (!word) {
+        return res.status(400).json({ error: "MISSING_WORD", message: "단어를 입력해주세요" });
+      }
+
+      const isValid = word2vecService.isValidWord(word);
+      res.json({ 
+        isValid,
+        word,
+        message: isValid ? "유효한 단어입니다" : "사전에 없는 단어입니다"
+      });
+    } catch (error) {
+      console.error('Word validation error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "단어 검증 중 오류가 발생했습니다" });
+    }
+  });
+
+  return httpServer;
+}
