@@ -1,16 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import MatchBanner from "@/components/MatchBanner";
+
+interface UserStats {
+  gamesPlayed: number;
+  gamesWon: number;
+  gamesLost: number;
+  winRate: number;
+  bestScore: number;
+  totalScore: number;
+  currentStreak: number;
+  bestStreak: number;
+  averageScore: number;
+}
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [matchmakingSeconds, setMatchmakingSeconds] = useState(0);
   const [canStartBot, setCanStartBot] = useState(false);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
   const { toast } = useToast();
 
   const handleQuickMatch = async () => {
@@ -148,6 +162,26 @@ export default function Home() {
     handleBotMatch();
   };
 
+  // Load user statistics
+  useEffect(() => {
+    const loadUserStats = async () => {
+      const userId = localStorage.getItem('userId');
+      if (!userId) return;
+
+      try {
+        setIsLoadingStats(true);
+        const stats = await api.getUserStats(userId);
+        setUserStats(stats);
+      } catch (error: any) {
+        console.error('Failed to load user stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    loadUserStats();
+  }, []);
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 space-y-8">
       {/* Hero Section */}
@@ -208,6 +242,79 @@ export default function Home() {
           </div>
         </CardContent>
       </Card>
+
+      {/* User Statistics */}
+      {userStats && (
+        <Card className="bg-card shadow-lg mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <i className="fas fa-chart-bar text-primary"></i>
+              <span>나의 게임 통계</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="text-center space-y-2">
+                <div className="text-3xl font-bold text-primary">{userStats.gamesPlayed}</div>
+                <div className="text-sm text-muted-foreground">총 게임</div>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="text-3xl font-bold text-green-500">{userStats.winRate}%</div>
+                <div className="text-sm text-muted-foreground">승률</div>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="text-3xl font-bold text-accent">{userStats.bestScore}</div>
+                <div className="text-sm text-muted-foreground">최고 점수</div>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="text-3xl font-bold text-secondary">{userStats.currentStreak}</div>
+                <div className="text-sm text-muted-foreground">연승</div>
+              </div>
+            </div>
+            
+            {/* Detailed Stats */}
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">승리</span>
+                  <span className="font-semibold text-green-500">{userStats.gamesWon}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">패배</span>
+                  <span className="font-semibold text-red-500">{userStats.gamesLost}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">평균 점수</span>
+                  <span className="font-semibold text-foreground">{userStats.averageScore}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">총 점수</span>
+                  <span className="font-semibold text-foreground">{userStats.totalScore.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">최고 연승</span>
+                  <span className="font-semibold text-accent">{userStats.bestStreak}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">현재 연승</span>
+                  <span className="font-semibold text-secondary">{userStats.currentStreak}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoadingStats && (
+        <Card className="bg-card shadow-lg mb-8">
+          <CardContent className="p-8">
+            <div className="text-center space-y-4">
+              <i className="fas fa-spinner animate-spin text-2xl text-muted-foreground"></i>
+              <p className="text-muted-foreground">통계를 불러오는 중...</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Additional Options */}
       <div className="grid md:grid-cols-2 gap-6">

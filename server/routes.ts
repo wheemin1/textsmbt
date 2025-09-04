@@ -387,5 +387,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user statistics
+  app.get("/api/users/:userId/stats", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "USER_NOT_FOUND", message: "사용자를 찾을 수 없습니다" });
+      }
+
+      // Calculate win rate
+      const winRate = user.gamesPlayed > 0 ? Math.round((user.gamesWon / user.gamesPlayed) * 100) : 0;
+      const lossCount = user.gamesPlayed - user.gamesWon;
+
+      res.json({
+        gamesPlayed: user.gamesPlayed,
+        gamesWon: user.gamesWon,
+        gamesLost: lossCount,
+        winRate,
+        bestScore: user.bestScore,
+        totalScore: user.totalScore,
+        currentStreak: user.currentStreak,
+        bestStreak: user.bestStreak,
+        averageScore: user.gamesPlayed > 0 ? Math.round(user.totalScore / user.gamesPlayed) : 0
+      });
+    } catch (error) {
+      console.error('Get user stats error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "통계 조회 중 오류가 발생했습니다" });
+    }
+  });
+
   return httpServer;
 }

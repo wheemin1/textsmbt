@@ -118,5 +118,9 @@ export const api = {
 
   async validateWord(word: string) {
     return await apiRequest("POST", "/api/words/validate", { word });
+  },
+
+  async getUserStats(userId: string) {
+    return await apiRequest("GET", `/api/users/${userId}/stats`);
   }
 };
