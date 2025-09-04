@@ -1,0 +1,77 @@
+injected.js:253  POST https://f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/api/queue/join 404 (Not Found)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+apiRequest @ queryClient.ts:15
+joinQueue @ api.ts:53
+handleBotMatch @ Home.tsx:73
+(anonymous) @ Home.tsx:38
+basicStateReducer @ chunk-WERSD76P.js?v=259a7f95:11703
+updateReducer @ chunk-WERSD76P.js?v=259a7f95:11794
+updateState @ chunk-WERSD76P.js?v=259a7f95:12021
+useState @ chunk-WERSD76P.js?v=259a7f95:12753
+useState @ chunk-3TFVT2CW.js?v=259a7f95:1066
+Home @ Home.tsx:12
+renderWithHooks @ chunk-WERSD76P.js?v=259a7f95:11548
+updateFunctionComponent @ chunk-WERSD76P.js?v=259a7f95:14582
+beginWork @ chunk-WERSD76P.js?v=259a7f95:15924
+beginWork$1 @ chunk-WERSD76P.js?v=259a7f95:19753
+performUnitOfWork @ chunk-WERSD76P.js?v=259a7f95:19198
+workLoopSync @ chunk-WERSD76P.js?v=259a7f95:19137
+renderRootSync @ chunk-WERSD76P.js?v=259a7f95:19116
+performConcurrentWorkOnRoot @ chunk-WERSD76P.js?v=259a7f95:18678
+workLoop @ chunk-WERSD76P.js?v=259a7f95:197
+flushWork @ chunk-WERSD76P.js?v=259a7f95:176
+performWorkUntilDeadline @ chunk-WERSD76P.js?v=259a7f95:384Understand this error
+Console.js:61 Bot match error: Error: 404: {"error":"USER_NOT_FOUND","message":"사용자를 찾을 수 없습니다"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async Object.joinQueue (api.ts:53:22)
+    at async handleBotMatch (Home.tsx:73:22)
+Mt.forEach.n.<computed> @ Console.js:61
+handleBotMatch @ Home.tsx:84
+await in handleBotMatch
+(anonymous) @ Home.tsx:38
+basicStateReducer @ chunk-WERSD76P.js?v=259a7f95:11703
+updateReducer @ chunk-WERSD76P.js?v=259a7f95:11794
+updateState @ chunk-WERSD76P.js?v=259a7f95:12021
+useState @ chunk-WERSD76P.js?v=259a7f95:12753
+useState @ chunk-3TFVT2CW.js?v=259a7f95:1066
+Home @ Home.tsx:12
+renderWithHooks @ chunk-WERSD76P.js?v=259a7f95:11548
+updateFunctionComponent @ chunk-WERSD76P.js?v=259a7f95:14582
+beginWork @ chunk-WERSD76P.js?v=259a7f95:15924
+beginWork$1 @ chunk-WERSD76P.js?v=259a7f95:19753
+performUnitOfWork @ chunk-WERSD76P.js?v=259a7f95:19198
+workLoopSync @ chunk-WERSD76P.js?v=259a7f95:19137
+renderRootSync @ chunk-WERSD76P.js?v=259a7f95:19116
+performConcurrentWorkOnRoot @ chunk-WERSD76P.js?v=259a7f95:18678
+workLoop @ chunk-WERSD76P.js?v=259a7f95:197
+flushWork @ chunk-WERSD76P.js?v=259a7f95:176
+performWorkUntilDeadline @ chunk-WERSD76P.js?v=259a7f95:384Understand this error
+injected.js:253  POST https://f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/api/queue/join 404 (Not Found)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+apiRequest @ queryClient.ts:15
+joinQueue @ api.ts:53
+handleBotMatch @ Home.tsx:73
+handlePracticeGame @ Home.tsx:96
+callCallback2 @ chunk-WERSD76P.js?v=259a7f95:3674
+invokeGuardedCallbackDev @ chunk-WERSD76P.js?v=259a7f95:3699
+invokeGuardedCallback @ chunk-WERSD76P.js?v=259a7f95:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-WERSD76P.js?v=259a7f95:3736
+executeDispatch @ chunk-WERSD76P.js?v=259a7f95:7014
+processDispatchQueueItemsInOrder @ chunk-WERSD76P.js?v=259a7f95:7034
+processDispatchQueue @ chunk-WERSD76P.js?v=259a7f95:7043
+dispatchEventsForPlugins @ chunk-WERSD76P.js?v=259a7f95:7051
+(anonymous) @ chunk-WERSD76P.js?v=259a7f95:7174
+batchedUpdates$1 @ chunk-WERSD76P.js?v=259a7f95:18913
+batchedUpdates @ chunk-WERSD76P.js?v=259a7f95:3579
+dispatchEventForPluginEventSystem @ chunk-WERSD76P.js?v=259a7f95:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-WERSD76P.js?v=259a7f95:5478
+dispatchEvent @ chunk-WERSD76P.js?v=259a7f95:5472
+dispatchDiscreteEvent @ chunk-WERSD76P.js?v=259a7f95:5449Understand this error
+Console.js:61 Bot match error: Error: 404: {"error":"USER_NOT_FOUND","message":"사용자를 찾을 수 없습니다"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async Object.joinQueue (api.ts:53:22)
+    at async handleBotMatch (Home.tsx:73:22)
