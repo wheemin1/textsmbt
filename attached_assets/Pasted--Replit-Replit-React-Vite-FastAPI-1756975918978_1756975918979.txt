@@ -1,0 +1,207 @@
+좋아. Replit 코드생성기에 그대로 붙여넣을 **초정밀 스캐폴드 프롬프트**를 준비했어.
+(단일 Replit 프로젝트에서 **React+Vite 프론트**와 **FastAPI 백엔드**를 함께 돌리고, 백엔드가 빌드된 프론트를 **정적 서빙**하는 구조. 외부 DB 없이 **인메모리 매치/봇전**으로 MVP를 즉시 시연 가능)
+
+---
+
+# ✅ Replit 생성 지시문 (복붙)
+
+**목표**
+
+* 단일 Replit 프로젝트로 **풀스택 MVP**를 생성한다.
+* **React + Vite + Tailwind(프론트)**, **FastAPI + Uvicorn(백엔드)**.
+* 백엔드는 `/api/*`를 제공하고, 빌드된 프론트(`frontend/dist`)를 **StaticFiles**로 서빙한다(별도 dev 서버 없이 한 프로세스).
+* **싱글 프로세스/무DB**: 모든 게임 상태는 **인메모리** 저장. (재시작 시 초기화)
+* **멀티플레이 UX**를 모사하기 위해, 매칭 12초 내 상대가 없으면 **자동 봇전**으로 전환.
+* 점수 계산은 기본 **DEV\_FAKE\_SCORING**(간이 점수)로 시작. 나중에 fastText 임베딩을 붙일 수 있게 **주석과 훅**을 남긴다.
+
+---
+
+## 1) 프로젝트 구조
+
+```
+korean-text-battle/
+├── backend/
+│   ├── main.py                 # FastAPI 앱, API 라우트, 정적서빙
+│   ├── game_engine.py          # 라운드제 규칙/판정/상태머신
+│   ├── bot.py                  # 봇 전략(난이도 normal 기본)
+│   ├── store.py                # 인메모리 스토어(게임/대기열)
+│   ├── words.py                # 단어 목록 로딩/검증(샘플 200 단어 동봉)
+│   └── settings.py             # ENV/플래그(DEV_FAKE_SCORING, WAIT_SOFT/HARD)
+├── frontend/
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
+│   └── src/
+│       ├── App.tsx
+│       ├── main.tsx
+│       ├── lib/api.ts          # fetch 래퍼 (기본 baseURL=/api)
+│       ├── hooks/useGameState.ts
+│       ├── pages/Home.tsx
+│       ├── pages/Onboarding.tsx
+│       └── pages/Game.tsx
+│       └── components/
+│           ├── RoundDots.tsx
+│           ├── WordInput.tsx
+│           ├── MatchBanner.tsx
+│           ├── ScoreRow.tsx
+│           └── ResultModal.tsx
+├── data/
+│   └── korean_words.sample.txt # 샘플 200 단어(중복/특수문자 정리)
+├── start.sh                    # Replit 실행 스크립트: 프론트 빌드→Uvicorn
+├── requirements.txt            # fastapi, uvicorn[standard], pydantic, numpy, python-multipart
+├── .replit                     # run = bash start.sh
+└── README.md                   # 실행/구조/확장 가이드
+```
+
+> **단일 포트 3000**에서 Uvicorn이 기동, `/api/...`는 JSON, 그 외 경로는 `frontend/dist`의 SPA를 리턴.
+
+---
+
+## 2) 백엔드 (FastAPI)
+
+### 2.1 서버 기동
+
+* 호스트 `0.0.0.0`, 포트 `3000`, Uvicorn.
+* CORS는 동일 오리진이라 기본 비활성(필요 시 `allow_origins=['*']` 주석 제공).
+
+### 2.2 헬스/기본 API
+
+* `GET /api/health` → `{ ok: true, serverTime: ISOString }`
+* `GET /api/game-status/{game_id}` → 현재 라운드/남은 시간/제출 여부/최고점/상대 봇 여부 등 스냅샷
+* **절대 폴링 자동 시작 금지**: 헬퍼는 만들되 기본 비활성(주석).
+
+### 2.3 매치/라운드 API (인메모리)
+
+* `POST /api/queue/join` `{ lang: 'ko' }`
+
+  * 매칭 대기열에 넣고, **WAIT\_SOFT=6s**, **WAIT\_HARD=12s** 타임라인:
+
+    * SOFT 경과 시 프론트에 **“지금 봇전 시작”** 버튼을 보여줄 수 있게 `soft=true` 플래그 반환.
+    * HARD까지 상대 없으면 서버가 **봇전 게임을 생성**해서 `{ game_id, is_bot:true, bot_difficulty:'normal' }` 반환.
+    * 상대가 잡히면 `{ game_id, is_bot:false }`.
+* `POST /api/game/submit` `{ game_id, token }`
+
+  * 검증: 사전 단어인지, 이 라운드에 **중복 제출 없는지**, 같은 라운드 **상대가 이미 쓴 단어와 중복인지**.
+  * 점수: `DEV_FAKE_SCORING=true`면 **간이 점수**(길이/공통문자 기반 등 0–100)로 계산.
+  * 라운드 종료: 양쪽 제출 or 라운드 타임아웃(15s) → **동시 공개**가 보장되도록 한 번의 스냅샷으로 응답:
+
+    * `{ score, round_no, round_done, game_done, my_best, opp_best?, winner? }`
+* **타임아웃 처리**: 15초 만료 시 미제출자는 0점으로 라운드 마감.
+* **봇 제출**: 사람이 제출하면 서버가 **0.6–1.2s 랜덤 지연** 후 봇 단어를 기록. 두 제출이 갖춰지면 한 번에 공개.
+
+### 2.4 규칙(라운드제)
+
+* 총 **5라운드**, 각 라운드 **1회 제출**, 제한 **15초**.
+* **동시 제출 → 동시 공개**(라운드 중 점수 숨김).
+* 승부: 최고점 → 동점이면 2nd → … → 무승부.
+* 금지: 같은 라운드 상대 단어 중복, **내 직전 라운드 단어 재사용**.
+
+### 2.5 정적 서빙
+
+* `frontend/dist`를 `StaticFiles(html=True)`로 `/`에 마운트.
+* 존재하지 않는 경로는 모두 SPA의 `index.html`로 폴백.
+
+---
+
+## 3) 프론트엔드 (React + Vite + Tailwind)
+
+### 3.1 라우팅/UI
+
+* 라우팅은 SPA(React Router 없이 단일 페이지 탭형도 OK).
+* **페이지 3개**
+
+  1. **Home**: 히어로(타이틀/부제), “빠른 매칭” 버튼, 보조 링크 2개(“봇과 연습전”, “친구 초대 링크 (더미)”). 매칭 배너(최대 12초, 6초 이후 “지금 연습전 시작” 버튼 노출).
+  2. **Onboarding**: 닉네임 입력(LocalStorage에만 저장), “시작하기” 누르면 Home.
+  3. **Game**: 상단 라운드 ●●●●●, 우상단 타이머(숫자만 UI), 중앙 입력창+자동완성(샘플 단어 200개), 제출 버튼, 하단 라운드 히스토리/최고점. 라운드 종료 시 동시 공개 애니메이션. 결과 모달(승/무/패, 재매치/홈).
+
+### 3.2 컴포넌트
+
+* `RoundDots`: 현재 ●(진한), 지난 ●(회색), 남은 ○(테두리).
+* `WordInput`: 자동완성(최대 8개), IME 조합 중 Enter 방지, 제출 후 버튼 잠금.
+* `MatchBanner`: 매칭 상태/카운트다운/연습전 전환 버튼.
+* `ScoreRow`: 라운드별 내/상대 점수 2줄, **최고점 라운드 왕관 아이콘**.
+* `ResultModal`: 승/무/패, 5라운드 점수표, 재매치 버튼.
+
+### 3.3 스타일 가이드(Tailwind)
+
+* 컨테이너: `mx-auto max-w-4xl px-4 lg:py-10 py-6 space-y-10`
+* 카드: `bg-white rounded-2xl shadow-md p-6 md:p-8`
+* Primary 버튼: `w-full h-14 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 focus-visible:ring-2 ring-offset-2 ring-blue-300`
+* 접근성: 모든 클릭 요소에 `aria-label`, `focus-visible` 링.
+
+### 3.4 API 래퍼
+
+* `VITE_API_BASE` 기본 `/api`
+* `api.joinQueue()`, `api.submitGuess()`, `api.getStatus(gameId)` 3개만.
+* **폴링 금지**: 제출 후 라운드 완료 대기만 **짧은 간격(1s) 한정**으로 `getStatus` 재시도. 화면 마운트 시 자동 폴링 없음.
+
+---
+
+## 4) 데이터/단어 사전
+
+* `data/korean_words.sample.txt`에 **200개 샘플 단어**를 동봉하고, 백엔드 `words.py`가 이를 로드.
+* `DEV_FAKE_SCORING=false`로 바꿀 경우를 대비해, `words.py`에 **임베딩 로딩 훅**(나중에 `embeddings.pkl`만 넣으면 작동)을 주석으로 안내.
+
+---
+
+## 5) 실행/빌드 (Replit에서 한 번에)
+
+* **start.sh**
+
+  1. `cd frontend && npm ci || npm install && npm run build` (dist 없거나 변경 시 빌드)
+  2. `cd .. && pip install -r requirements.txt`
+  3. `python -m uvicorn backend.main:app --host 0.0.0.0 --port 3000`
+
+* **.replit**
+
+  ```
+  run = "bash start.sh"
+  ```
+
+* 서버가 뜨면 `/api/health` 200, `/`에 SPA가 뜬다.
+
+---
+
+## 6) 품질/안전 요구사항
+
+* **404/끊김 방지**: `/api/health`와 `/api/game-status/{id}`는 항상 200이 나와야 한다(유효하지 않은 id면 dummy 상태 반환).
+* **동시 공개 보장**: 라운드 중에는 상대 점수 숨김, 라운드 종료 이벤트에서 **양쪽 점수를 한 번에** 응답.
+* **중복 제출 차단**: 동일 라운드 2회 제출 금지(서버/클라 모두).
+* **같은 라운드 동일 단어 금지**: 상대가 이미 쓴 단어면 409로 에러.
+* **내 직전 라운드 재사용 금지**: 서버에서 체크.
+* **봇 지연**: 600–1200ms 랜덤 딜레이 후 서버가 직접 기록(클라 타이머와 무관).
+* **소스 주석**: 나중에 fastText 임베딩으로 바꿀 위치에 **TODO** 주석과 함수 시그니처 명시.
+
+---
+
+## 7) 수용 기준(acceptance)
+
+1. `/` 홈에서 “빠른 매칭” 클릭 → 상단 배너 “매칭 중(최대 12초)” → 6초 이후 “지금 연습전 시작” 버튼 노출.
+2. 12초 내 사람이 없으면 자동으로 **봇전** 시작(상대 닉네임에 `[봇]` 라벨).
+3. 게임 화면에서 5라운드 진행: 각 라운드 제출 시 내 점수는 **라운드 종료 때** 함께 공개.
+4. 5라운드 종료 → 결과 모달에 승/무/패와 점수표가 뜨고, “재매치” 버튼으로 다시 홈→매칭 흐름이 동작.
+5. `/api/health`, `/api/game-status/{id}` 호출은 200 OK. 폴링은 제출 이후 라운드 완료 대기시에만 제한적으로 발생.
+
+---
+
+## 8) 비기능(성능/보안)
+
+* 인메모리 스토어는 **스레드 안전**하게 구현(간단한 Lock).
+* 모든 API는 **타입 명세**(pydantic 모델)로 문서화(`/docs` 자동).
+* 에러는 일관된 JSON `{error: code, message}`로 반환.
+
+---
+
+## 9) README에 포함할 것
+
+* 프로젝트 개요/구조도
+* 실행 방법(Replit/로컬)
+* 환경 변수(선택: `VITE_API_BASE`, `DEV_FAKE_SCORING`, `WAIT_SOFT/HARD`)
+* 나중에 fastText 임베딩 붙이는 방법(파일 경로, 포맷)
+* 멀티플레이 확장 시나리오(외부 DB/Supabase로 이관 포인트)
+
+---
+
+이 프롬프트 그대로 넣으면, **지금 당장 플레이 가능한** 라운드제 텍스트 배틀 MVP 뼈대가 생성될 거야.
+원하면 이후 단계(임베딩 점수 실제화, Supabase로 DB 이관, 친구 초대 링크, 데일리 모드)도 이어서 프롬프트 만들어줄게.
