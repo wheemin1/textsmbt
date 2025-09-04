@@ -43,10 +43,48 @@ export interface WordSuggestions {
   suggestions: string[];
 }
 
+export async function apiRequest(method: string, endpoint: string, body?: any): Promise<any> {
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+
+  const config: RequestInit = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include', // Include cookies for session management
+  };
+
+  if (body && method !== 'GET') {
+    config.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, config);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'NETWORK_ERROR' }));
+    throw new Error(errorData.message || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export const api = {
+  // Auth
+  getCurrentUser: async () => {
+    try {
+      return await apiRequest('GET', '/api/auth/user');
+    } catch (error) {
+      console.error('Get current user error:', error);
+      return null;
+    }
+  },
+
+  logout: async () => {
+    await apiRequest('POST', '/api/auth/logout');
+  },
+
   async createUser(nickname: string) {
-    const response = await apiRequest("POST", `${API_BASE}/users`, { nickname });
-    return response.json();
+    return await apiRequest("POST", "/api/users", { nickname });
   },
 
   async joinQueue(userId: string, language: string = "ko"): Promise<MatchResult> {

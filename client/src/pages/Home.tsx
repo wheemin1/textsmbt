@@ -65,7 +65,36 @@ export default function Home() {
   };
 
   const handleBotMatch = async () => {
-    const userId = localStorage.getItem('userId');
+    let userId = localStorage.getItem('userId');
+
+    // Validate user exists - first check current user endpoint
+    try {
+      const currentUser = await api.getCurrentUser();
+      if (currentUser?.id) {
+        userId = currentUser.id;
+        localStorage.setItem('userId', userId);
+      } else {
+        // No session user, redirect to login
+        toast({
+          variant: "destructive",
+          title: "로그인 필요",
+          description: "먼저 로그인해주세요.",
+        });
+        setLocation('/');
+        return;
+      }
+    } catch {
+      // No session, redirect to login
+      localStorage.removeItem('userId');
+      toast({
+        variant: "destructive",
+        title: "로그인 필요",
+        description: "세션이 만료되었습니다. 다시 로그인해주세요.",
+      });
+      setLocation('/');
+      return;
+    }
+
     if (!userId) return;
 
     try {

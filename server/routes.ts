@@ -183,33 +183,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/queue/join", async (req, res) => {
     try {
       const validatedData = joinQueueSchema.parse(req.body);
-      const { userId, language } = validatedData;
+      let { userId, language } = validatedData;
 
-      // Check if user exists, if not try to get from session
+      // First, try to get user from localStorage userId
       let user = await storage.getUser(userId);
+      
+      // If not found, try session user
       if (!user && req.session.user?.id) {
-        // Try with session user ID
-        user = await storage.getUser(req.session.user.id);
-        if (user) {
-          // Update the request to use correct userId
-          validatedData.userId = req.session.user.id;
-        }
+        userId = req.session.user.id;
+        user = await storage.getUser(userId);
       }
       
+      // If still not found, return error (user should login first)
       if (!user) {
         return res.status(404).json({ error: "USER_NOT_FOUND", message: "사용자를 찾을 수 없습니다" });
       }
 
+      // Use the actual user ID from database
+      const actualUserId = user.id;
+
       // Remove user from any existing queue
-      await storage.removeFromQueue(userId);
+      await storage.removeFromQueue(actualUserId);
 
       // Look for existing match
-      const match = await storage.findQueueMatch(userId, language);
+      const match = await storage.findQueueMatch(actualUserId, language);
       
       if (match) {
         // Found a match! Create game
         await storage.removeFromQueue(match.userId);
-        const game = await gameEngine.createGame(userId, match.userId, false);
+        const game = await gameEngine.createGame(actualUserId, match.userId, false);
         
         res.json({
           gameId: game.id,
@@ -220,17 +222,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         // Add to queue
-        await storage.addToQueue({ userId, language });
+        await storage.addToQueue({ userId: actualUserId, language });
         
         // Set timeout for bot match
         setTimeout(async () => {
           try {
             // Check if still in queue
-            const position = await storage.getQueuePosition(userId);
+            const position = await storage.getQueuePosition(actualUserId);
             if (position > 0) {
               // Create bot game
-              await storage.removeFromQueue(userId);
-              const game = await gameEngine.createGame(userId, undefined, true);
+              await storage.removeFromQueue(actualUserId);
+              const game = await gameEngine.createGame(actualUserId, undefined, true);
               
               // Notify client via WebSocket
               broadcastToGame(game.id, {
