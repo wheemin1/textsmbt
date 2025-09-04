@@ -50,8 +50,13 @@ export const api = {
   },
 
   async joinQueue(userId: string, language: string = "ko"): Promise<MatchResult> {
-    const response = await apiRequest("POST", `${API_BASE}/queue/join`, { userId, language });
-    return response.json();
+    try {
+      const response = await apiRequest("POST", `${API_BASE}/queue/join`, { userId, language });
+      return response.json();
+    } catch (error: any) {
+      console.error('Join queue API error:', error);
+      throw error;
+    }
   },
 
   async submitWord(gameId: string, userId: string, word: string): Promise<SubmitResult> {

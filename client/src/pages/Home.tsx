@@ -26,24 +26,24 @@ export default function Home() {
       const timer = setInterval(() => {
         setMatchmakingSeconds(prev => {
           const newSeconds = prev + 1;
-          
+
           // Show bot option after 6 seconds
           if (newSeconds >= 6) {
             setCanStartBot(true);
           }
-          
+
           // Auto-start bot match after 12 seconds
           if (newSeconds >= 12) {
             clearInterval(timer);
             handleBotMatch();
           }
-          
+
           return newSeconds;
         });
       }, 1000);
 
       const result = await api.joinQueue(userId);
-      
+
       if (result.gameId) {
         // Found immediate match
         clearInterval(timer);
@@ -69,26 +69,43 @@ export default function Home() {
     if (!userId) return;
 
     try {
-      // Create bot game directly
-      const result = await api.joinQueue(userId); // This should create a bot game after timeout
-      
-      toast({
-        title: "봇 매칭 성공",
-        description: "AI 봇과의 대전이 시작됩니다!",
-      });
-      
+      setIsMatchmaking(false);
+
+      // Join queue which will automatically create bot game after timeout
+      const result = await api.joinQueue(userId);
+
       if (result.gameId) {
+        toast({
+          title: "봇 매칭 성공",
+          description: "AI 봇과의 대전이 시작됩니다!",
+        });
         setLocation(`/game/${result.gameId}`);
+      } else {
+        // If no immediate game, the server will create a bot game via timeout
+        toast({
+          title: "봇 대전 준비 중",
+          description: "잠시 후 봇과의 대전이 시작됩니다.",
+        });
       }
     } catch (error: any) {
       console.error('Bot match error:', error);
-      toast({
-        variant: "destructive",
-        title: "봇 매칭 실패",
-        description: "봇과의 대전 생성 중 오류가 발생했습니다.",
-      });
-    } finally {
       setIsMatchmaking(false);
+
+      if (error.message?.includes('USER_NOT_FOUND')) {
+        localStorage.removeItem('userId');
+        toast({
+          variant: "destructive",
+          title: "사용자 정보 오류",
+          description: "다시 로그인해주세요.",
+        });
+        setLocation('/');
+      } else {
+        toast({
+          variant: "destructive",
+          title: "봇 매칭 실패",
+          description: "봇과의 대전 생성에 실패했습니다.",
+        });
+      }
     }
   };
 
@@ -123,7 +140,7 @@ export default function Home() {
             </div>
             <h2 className="text-2xl font-bold text-card-foreground">빠른 매칭</h2>
             <p className="text-muted-foreground">실시간으로 다른 플레이어와 대전하거나 봇과 연습해보세요</p>
-            
+
             {/* Match Banner */}
             {isMatchmaking && (
               <MatchBanner
@@ -133,7 +150,7 @@ export default function Home() {
                 onStartBot={handleBotMatch}
               />
             )}
-            
+
             <Button
               size="lg"
               className="w-full h-14 rounded-full font-semibold"
@@ -180,7 +197,7 @@ export default function Home() {
             </Button>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-card shadow-md hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center space-x-4 mb-4">

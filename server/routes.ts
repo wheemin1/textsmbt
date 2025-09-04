@@ -185,8 +185,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = joinQueueSchema.parse(req.body);
       const { userId, language } = validatedData;
 
-      // Check if user exists
-      const user = await storage.getUser(userId);
+      // Check if user exists, if not try to get from session
+      let user = await storage.getUser(userId);
+      if (!user && req.session.user?.id) {
+        // Try with session user ID
+        user = await storage.getUser(req.session.user.id);
+        if (user) {
+          // Update the request to use correct userId
+          validatedData.userId = req.session.user.id;
+        }
+      }
+      
       if (!user) {
         return res.status(404).json({ error: "USER_NOT_FOUND", message: "사용자를 찾을 수 없습니다" });
       }
