@@ -1,25 +1,18 @@
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-
+import { OAuth2Client } from 'google-auth-library';
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  throw new Error("Environment variables GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required");
 }
 
-const getOidcConfig = memoize(
-  async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
-  },
-  { maxAge: 3600 * 1000 }
+const client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/auth/google/callback"
 );
 
 export function getSession() {
@@ -38,34 +31,21 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
     },
   });
 }
 
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
-}
+async function upsertUser(profile: any) {
+  const nickname = profile.given_name || profile.email?.split("@")[0] || `User${profile.sub.slice(-4)}`;
 
-async function upsertUser(
-  claims: any,
-) {
-  // Create a nickname from the user's name or email
-  const nickname = claims["first_name"] || claims["email"]?.split("@")[0] || `User${claims["sub"].slice(-4)}`;
-  
   await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    id: profile.sub,
+    email: profile.email,
+    firstName: profile.given_name,
+    lastName: profile.family_name,
+    profileImageUrl: profile.picture,
     nickname,
   });
 }
@@ -73,89 +53,88 @@ async function upsertUser(
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
 
-  const config = await getOidcConfig();
-
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
-  };
-
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
-    const strategy = new Strategy(
-      {
-        name: `replitauth:${domain}`,
-        config,
-        scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
-      },
-      verify,
-    );
-    passport.use(strategy);
-  }
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-
-  app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+  // Google OAuth login route
+  app.get("/api/login", (req, res) => {
+    const authUrl = client.generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/userinfo.email'
+      ],
+      include_granted_scopes: true,
+    });
+    res.redirect(authUrl);
   });
 
-  app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, next);
+  // Google OAuth callback route
+  app.get("/auth/google/callback", async (req, res) => {
+    try {
+      const { code } = req.query;
+      if (!code) {
+        return res.redirect("/api/login");
+      }
+
+      const { tokens } = await client.getToken(code as string);
+      client.setCredentials(tokens);
+
+      const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token!,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload) {
+        return res.redirect("/api/login");
+      }
+
+      // Store user session
+      req.session.user = {
+        id: payload.sub,
+        email: payload.email,
+        firstName: payload.given_name,
+        lastName: payload.family_name,
+        profileImageUrl: payload.picture,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+      };
+
+      await upsertUser(payload);
+      res.redirect("/");
+    } catch (error) {
+      console.error("Google OAuth callback error:", error);
+      res.redirect("/api/login");
+    }
   });
 
+  // Logout route
   app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Session destroy error:", err);
+      }
+      res.redirect("/");
     });
   });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
+  const user = req.session.user;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
+  // Add user to request object for compatibility
+  req.user = {
+    claims: () => ({
+      sub: user.id,
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      profile_image_url: user.profileImageUrl,
+    })
+  };
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  next();
 };

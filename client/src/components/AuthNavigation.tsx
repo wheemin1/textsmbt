@@ -39,6 +39,8 @@ export default function AuthNavigation() {
           로그아웃
         </Button>
       </div>
+    </div>on>
+      </div>
     </div>
   );
 }
