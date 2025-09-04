@@ -5,15 +5,13 @@ import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-  throw new Error("Environment variables GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required");
-}
+const hasGoogleAuth = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
 
-const client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
+const client = hasGoogleAuth ? new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID!,
+  process.env.GOOGLE_CLIENT_SECRET!,
   process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/auth/google/callback"
-);
+) : null;
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -56,6 +54,9 @@ export async function setupAuth(app: Express) {
 
   // Google OAuth login route
   app.get("/api/login", (req, res) => {
+    if (!hasGoogleAuth || !client) {
+      return res.status(501).json({ message: "Google authentication not configured" });
+    }
     const authUrl = client.generateAuthUrl({
       access_type: 'offline',
       scope: [
@@ -69,6 +70,9 @@ export async function setupAuth(app: Express) {
 
   // Google OAuth callback route
   app.get("/auth/google/callback", async (req, res) => {
+    if (!hasGoogleAuth || !client) {
+      return res.redirect("/");
+    }
     try {
       const { code } = req.query;
       if (!code) {
@@ -80,7 +84,7 @@ export async function setupAuth(app: Express) {
 
       const ticket = await client.verifyIdToken({
         idToken: tokens.id_token!,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: process.env.GOOGLE_CLIENT_ID!,
       });
 
       const payload = ticket.getPayload();
@@ -90,13 +94,13 @@ export async function setupAuth(app: Express) {
 
       // Store user session
       req.session.user = {
-        id: payload.sub,
-        email: payload.email,
-        firstName: payload.given_name,
-        lastName: payload.family_name,
-        profileImageUrl: payload.picture,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
+        id: payload.sub!,
+        email: payload.email || null,
+        firstName: payload.given_name || null,
+        lastName: payload.family_name || null,
+        profileImageUrl: payload.picture || null,
+        accessToken: tokens.access_token || null,
+        refreshToken: tokens.refresh_token || null,
       };
 
       await upsertUser(payload);

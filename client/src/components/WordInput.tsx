@@ -25,7 +25,7 @@ export default function WordInput({ onSubmit, disabled = false, gameId }: WordIn
   }) as { data?: { suggestions: string[] } };
 
   useEffect(() => {
-    if (word.length >= 1 && suggestions?.suggestions?.length > 0) {
+    if (word.length >= 1 && suggestions?.suggestions && suggestions.suggestions.length > 0) {
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);

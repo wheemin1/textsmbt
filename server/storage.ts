@@ -1,7 +1,7 @@
 import { type User, type Game, type GameSubmission, type MatchmakingEntry, type InsertUser, type InsertGame, type InsertGameSubmission, type InsertMatchmaking, users, games, gameSubmissions, matchmakingQueue } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users  
@@ -52,13 +52,40 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
+    const now = new Date();
     const user: User = { 
       ...insertUser, 
       id, 
-      createdAt: new Date() 
+      email: insertUser.email || null,
+      firstName: insertUser.firstName || null,
+      lastName: insertUser.lastName || null,
+      profileImageUrl: insertUser.profileImageUrl || null,
+      createdAt: now,
+      updatedAt: null
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async upsertUser(userData: any): Promise<User> {
+    const existingUser = this.users.get(userData.id);
+    if (existingUser) {
+      const updatedUser: User = {
+        ...existingUser,
+        ...userData,
+        updatedAt: new Date()
+      };
+      this.users.set(userData.id, updatedUser);
+      return updatedUser;
+    } else {
+      const user: User = {
+        ...userData,
+        createdAt: new Date(),
+        updatedAt: null
+      };
+      this.users.set(userData.id, user);
+      return user;
+    }
   }
 
   async getGame(id: string): Promise<Game | undefined> {
@@ -226,8 +253,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(gameSubmissions)
-      .where(eq(gameSubmissions.gameId, gameId))
-      .where(eq(gameSubmissions.round, round));
+      .where(and(eq(gameSubmissions.gameId, gameId), eq(gameSubmissions.round, round)));
   }
 
   async addToQueue(insertEntry: InsertMatchmaking): Promise<MatchmakingEntry> {
