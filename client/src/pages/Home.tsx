@@ -74,7 +74,23 @@ export default function Home() {
         userId = currentUser.id;
         localStorage.setItem('userId', userId);
       } else {
-        // No session user, redirect to login
+        // No session user, try to use localStorage userId if available
+        if (!userId) {
+          toast({
+            variant: "destructive",
+            title: "로그인 필요",
+            description: "먼저 로그인해주세요.",
+          });
+          setLocation('/');
+          return;
+        }
+        // Continue with localStorage userId
+      }
+    } catch (error: any) {
+      console.error('Current user check failed:', error);
+      // If API fails, try to use localStorage userId if available
+      if (!userId) {
+        localStorage.removeItem('userId');
         toast({
           variant: "destructive",
           title: "로그인 필요",
@@ -83,16 +99,6 @@ export default function Home() {
         setLocation('/');
         return;
       }
-    } catch {
-      // No session, redirect to login
-      localStorage.removeItem('userId');
-      toast({
-        variant: "destructive",
-        title: "로그인 필요",
-        description: "세션이 만료되었습니다. 다시 로그인해주세요.",
-      });
-      setLocation('/');
-      return;
     }
 
     if (!userId) return;

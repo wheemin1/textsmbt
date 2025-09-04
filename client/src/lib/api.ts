@@ -60,6 +60,15 @@ export async function apiRequest(method: string, endpoint: string, body?: any): 
 
   const response = await fetch(url, config);
 
+  // Check if response is HTML (likely a redirect or error page)
+  const contentType = response.headers.get('content-type');
+  if (contentType && !contentType.includes('application/json')) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('UNAUTHORIZED');
+    }
+    throw new Error(`Invalid response type: ${contentType}`);
+  }
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'NETWORK_ERROR' }));
     throw new Error(errorData.message || `HTTP ${response.status}`);
@@ -73,7 +82,10 @@ export const api = {
   getCurrentUser: async () => {
     try {
       return await apiRequest('GET', '/api/auth/user');
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === 'UNAUTHORIZED') {
+        return null; // User not authenticated
+      }
       console.error('Get current user error:', error);
       return null;
     }
@@ -88,33 +100,23 @@ export const api = {
   },
 
   async joinQueue(userId: string, language: string = "ko"): Promise<MatchResult> {
-    try {
-      const response = await apiRequest("POST", `${API_BASE}/queue/join`, { userId, language });
-      return response.json();
-    } catch (error: any) {
-      console.error('Join queue API error:', error);
-      throw error;
-    }
+    return await apiRequest("POST", "/api/queue/join", { userId, language });
   },
 
   async submitWord(gameId: string, userId: string, word: string): Promise<SubmitResult> {
-    const response = await apiRequest("POST", `${API_BASE}/game/submit`, { gameId, userId, word });
-    return response.json();
+    return await apiRequest("POST", "/api/game/submit", { gameId, userId, word });
   },
 
   async getGameStatus(gameId: string): Promise<GameStatus> {
-    const response = await apiRequest("GET", `${API_BASE}/game-status/${gameId}`);
-    return response.json();
+    return await apiRequest("GET", `/api/game-status/${gameId}`);
   },
 
   async getWordSuggestions(query: string, limit: number = 8): Promise<WordSuggestions> {
     const params = new URLSearchParams({ q: query, limit: limit.toString() });
-    const response = await apiRequest("GET", `${API_BASE}/words/suggest?${params}`);
-    return response.json();
+    return await apiRequest("GET", `/api/words/suggest?${params}`);
   },
 
   async validateWord(word: string) {
-    const response = await apiRequest("POST", `${API_BASE}/words/validate`, { word });
-    return response.json();
+    return await apiRequest("POST", "/api/words/validate", { word });
   }
 };
