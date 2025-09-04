@@ -35,15 +35,40 @@ export default function Landing() {
           <Button
             size="lg"
             className="w-full h-14 rounded-full font-semibold"
-            onClick={() => window.location.href = "/api/login"}
+            onClick={async () => {
+              try {
+                const nickname = prompt("닉네임을 입력하세요 (개발용 모드):");
+                if (!nickname) return;
+
+                const response = await fetch("/api/auth/mock-login", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ nickname }),
+                  credentials: "include"
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                  console.log("Mock login success", data);
+                  window.location.reload();
+                } else {
+                  alert(`로그인 실패: ${data.message}`);
+                }
+              } catch (error) {
+                console.error("Login error:", error);
+                alert("로그인 중 오류가 발생했습니다");
+              }
+            }}
             data-testid="button-login"
           >
             <i className="fas fa-sign-in-alt mr-2"></i>
-            로그인하기
+            로그인하기 (개발용)
           </Button>
           
           <p className="text-xs text-muted-foreground">
-            Replit 계정으로 안전하게 로그인됩니다
+            개발 모드: 닉네임만 입력하면 로그인됩니다
           </p>
         </CardContent>
       </Card>

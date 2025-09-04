@@ -75,8 +75,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Mock login route for development
+  app.post("/api/auth/mock-login", async (req, res) => {
+    try {
+      const { nickname } = req.body;
+      
+      if (!nickname || nickname.length < 2) {
+        return res.status(400).json({ error: "INVALID_NICKNAME", message: "닉네임은 2글자 이상이어야 합니다" });
+      }
+
+      // Create mock user data
+      const mockUserId = `mock_${Date.now()}`;
+      const mockUser = {
+        id: mockUserId,
+        nickname: nickname,
+        email: `${nickname}@mock.dev`,
+        firstName: nickname,
+        lastName: "User",
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        gamesPlayed: 0,
+        gamesWon: 0,
+        totalScore: 0,
+        bestScore: 0,
+        currentStreak: 0,
+        bestStreak: 0
+      };
+
+      // Store mock user in storage
+      await storage.upsertUser(mockUser);
+
+      // Set session
+      req.session.user = {
+        id: mockUserId,
+        email: mockUser.email,
+        firstName: mockUser.firstName,
+        lastName: mockUser.lastName,
+        profileImageUrl: mockUser.profileImageUrl,
+        accessToken: "mock_token",
+        refreshToken: "mock_refresh_token"
+      };
+
+      res.json({ message: "Mock login successful", user: mockUser });
+    } catch (error) {
+      console.error('Mock login error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "로그인 중 오류가 발생했습니다" });
+    }
+  });
+
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
       const userId = req.session.user?.id;
       if (!userId) {
@@ -84,11 +133,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
+  });
+
+  // Logout route
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Session destroy error:", err);
+        return res.status(500).json({ message: "로그아웃 중 오류가 발생했습니다" });
+      }
+      res.json({ message: "로그아웃되었습니다" });
+    });
   });
 
   // Create or get user by nickname (for non-auth users)

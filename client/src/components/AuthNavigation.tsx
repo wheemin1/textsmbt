@@ -33,11 +33,24 @@ export default function AuthNavigation() {
         <Button 
           variant="outline" 
           size="sm"
-          onClick={() => window.location.href = "/api/logout"}
+          onClick={async () => {
+            try {
+              const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "include"
+              });
+              if (response.ok) {
+                window.location.href = "/";
+              }
+            } catch (error) {
+              console.error("Logout error:", error);
+              window.location.href = "/";
+            }
+          }}
         >
           <i className="fas fa-sign-out-alt mr-1"></i>
           로그아웃
-        </Button>
+        </Button>on>
       </div>
     </div>
   );

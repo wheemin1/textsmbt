@@ -9,17 +9,17 @@ export interface IStorage {
   getUserByNickname(nickname: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: any): Promise<User>;
-  
+
   // Games
   getGame(id: string): Promise<Game | undefined>;
   createGame(game: InsertGame): Promise<Game>;
   updateGame(id: string, updates: Partial<Game>): Promise<Game | undefined>;
-  
+
   // Game submissions
   getGameSubmissions(gameId: string): Promise<GameSubmission[]>;
   createSubmission(submission: InsertGameSubmission): Promise<GameSubmission>;
   getSubmissionsByRound(gameId: string, round: number): Promise<GameSubmission[]>;
-  
+
   // Matchmaking
   addToQueue(entry: InsertMatchmaking): Promise<MatchmakingEntry>;
   findQueueMatch(userId: string, language: string): Promise<MatchmakingEntry | undefined>;
@@ -115,7 +115,7 @@ export class MemStorage implements IStorage {
   async updateGame(id: string, updates: Partial<Game>): Promise<Game | undefined> {
     const game = this.games.get(id);
     if (!game) return undefined;
-    
+
     const updatedGame = { 
       ...game, 
       ...updates, 
