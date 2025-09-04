@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import MatchBanner from "@/components/MatchBanner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface UserStats {
   gamesPlayed: number;
@@ -26,6 +27,7 @@ export default function Home() {
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const { toast } = useToast();
+  const { user, logout } = useAuth(); // Added for user authentication status
 
   const handleQuickMatch = async () => {
     const userId = localStorage.getItem('userId');
@@ -165,37 +167,133 @@ export default function Home() {
   // Load user statistics
   useEffect(() => {
     const loadUserStats = async () => {
-      const userId = localStorage.getItem('userId');
-      if (!userId) return;
+      if (!user?.id) {
+        setIsLoadingStats(false);
+        return;
+      }
 
       try {
         setIsLoadingStats(true);
-        const stats = await api.getUserStats(userId);
+        const stats = await api.getUserStats(user.id);
         setUserStats(stats);
       } catch (error: any) {
         console.error('Failed to load user stats:', error);
+        // Set default stats if API fails or user not found
+        setUserStats({
+          gamesPlayed: 0,
+          gamesWon: 0,
+          gamesLost: 0,
+          winRate: 0,
+          bestScore: 0,
+          totalScore: 0,
+          currentStreak: 0,
+          bestStreak: 0,
+          averageScore: 0
+        });
       } finally {
         setIsLoadingStats(false);
       }
     };
 
     loadUserStats();
-  }, []);
+  }, [user?.id]); // Depend on user?.id to refetch stats when user changes
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "로그아웃 완료",
+        description: "성공적으로 로그아웃되었습니다.",
+      });
+      setLocation('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        variant: "destructive",
+        title: "로그아웃 실패",
+        description: "로그아웃 중 오류가 발생했습니다.",
+      });
+    }
+  };
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 space-y-8">
-      {/* Hero Section */}
-      <div className="text-center space-y-6 mb-12 animate-fade-in">
-        <div className="relative">
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            텍스트 배틀
+      {/* Main Content */}
+      <div className="flex-1 space-y-8">
+        {/* Welcome Section */}
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+            안녕하세요, {user?.nickname || "플레이어"}님! 👋
           </h1>
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 blur-3xl -z-10"></div>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            단어의 의미적 유사성을 겨루는 흥미진진한 게임에 참여하세요
+          </p>
         </div>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          단어의 의미 유사도로 승부하는 실시간 대전 게임<br />
-          <span className="text-accent font-medium">5라운드 동안 가장 높은 점수를 획득하세요!</span>
-        </p>
+
+        {/* User Statistics */}
+        {user && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">승률</CardTitle>
+                <i className="fas fa-trophy h-4 w-4 text-muted-foreground"></i>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingStats ? "..." : `${userStats?.winRate || 0}%`}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isLoadingStats ? "로딩 중..." : `${userStats?.gamesPlayed || 0}게임 중 ${userStats?.gamesWon || 0}승`}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">총 게임</CardTitle>
+                <i className="fas fa-gamepad h-4 w-4 text-muted-foreground"></i>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingStats ? "..." : userStats?.gamesPlayed || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isLoadingStats ? "로딩 중..." : `${userStats?.gamesWon || 0}승 ${userStats?.gamesLost || 0}패`}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">최고 점수</CardTitle>
+                <i className="fas fa-star h-4 w-4 text-muted-foreground"></i>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingStats ? "..." : userStats?.bestScore || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isLoadingStats ? "로딩 중..." : `평균 ${userStats?.averageScore || 0}점`}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">연승 기록</CardTitle>
+                <i className="fas fa-fire h-4 w-4 text-muted-foreground"></i>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoadingStats ? "..." : userStats?.bestStreak || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isLoadingStats ? "로딩 중..." : `현재 ${userStats?.currentStreak || 0}연승`}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Quick Match Card */}
@@ -243,7 +341,8 @@ export default function Home() {
         </CardContent>
       </Card>
 
-      {/* User Statistics */}
+      {/* User Statistics (Old Display, kept for reference but new one above is primary) */}
+      {/*
       {userStats && (
         <Card className="bg-card shadow-lg mb-8">
           <CardHeader>
@@ -271,8 +370,7 @@ export default function Home() {
                 <div className="text-sm text-muted-foreground">연승</div>
               </div>
             </div>
-            
-            {/* Detailed Stats */}
+
             <div className="mt-6 pt-6 border-t border-border">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                 <div className="flex justify-between">
@@ -315,6 +413,7 @@ export default function Home() {
           </CardContent>
         </Card>
       )}
+      */}
 
       {/* Additional Options */}
       <div className="grid md:grid-cols-2 gap-6">
