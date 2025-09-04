@@ -23,6 +23,12 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  gamesPlayed: integer("games_played").default(0).notNull(),
+  gamesWon: integer("games_won").default(0).notNull(),
+  totalScore: integer("total_score").default(0).notNull(),
+  bestScore: integer("best_score").default(0).notNull(),
+  currentStreak: integer("current_streak").default(0).notNull(),
+  bestStreak: integer("best_streak").default(0).notNull(),
 });
 
 export const games = pgTable("games", {

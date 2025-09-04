@@ -1,0 +1,154 @@
+accessibility
+(anonymous) @ _app-ed957290dfbc6b7b.js:38Understand this warning
+_app-ed957290dfbc6b7b.js:38 If you do not provide children, you must specify an aria-label for accessibility
+(anonymous) @ _app-ed957290dfbc6b7b.js:38Understand this warning
+framework-d12711ff36e2d472.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+/~:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <div.cm-content cm-lineWrapping>
+Ancestor with aria-hidden: <div. useView_view__C2mnv css-2ynjxz Surface_surfaceRoot__TeA2u> nullUnderstand this warning
+framework-d12711ff36e2d472.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+VM87 recaptcha__ko.js:494 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:494Understand this error
+VM87 recaptcha__ko.js:494 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+(anonymous) @ VM87 recaptcha__ko.js:494Understand this error
+VM87 recaptcha__ko.js:494 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:494Understand this error
+VM87 recaptcha__ko.js:356 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:356Understand this error
+VM87 recaptcha__ko.js:356 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+(anonymous) @ VM87 recaptcha__ko.js:356Understand this error
+VM87 recaptcha__ko.js:356 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:356Understand this error
+VM87 recaptcha__ko.js:356 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:356Understand this error
+VM87 recaptcha__ko.js:356 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+(anonymous) @ VM87 recaptcha__ko.js:356Understand this error
+VM87 recaptcha__ko.js:356 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:356Understand this error
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 2
+stallwart.build.js:1 stallwart: failed ping 3
+stallwart.build.js:1 stallwart: failed ping 4
+stallwart.build.js:1 stallwart: failed ping 5
+stallwart.build.js:1 stallwart: session stalled
+framework-d12711ff36e2d472.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+_app-ed957290dfbc6b7b.js:38 task queue exceeded allotted deadline by 48ms
+(anonymous) @ _app-ed957290dfbc6b7b.js:38Understand this warning
+framework-d12711ff36e2d472.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+e @ framework-d12711ff36e2d472.js:1Understand this error
+framework-d12711ff36e2d472.js:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+e @ framework-d12711ff36e2d472.js:1Understand this error
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar1qq%3A:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+Network.js:227 WebSocket connection to 'wss://f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/?token=0sAA4sVJZbhO' failed: 
+t @ Network.js:227Understand this error
+Network.js:227 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=0sAA4sVJZbhO' is invalid.Understand this error
+f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/api/auth/user:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+Console.js:61 Mock login success [object Object]
+Network.js:227 WebSocket connection to 'wss://f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/?token=0sAA4sVJZbhO' failed: 
+t @ Network.js:227Understand this error
+Network.js:227 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=0sAA4sVJZbhO' is invalid.
+    at new t (Network.js:227:18)
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)Understand this error
+f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/api/queue/join:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+Console.js:61 Matchmaking error: Error: 404: {"error":"USER_NOT_FOUND","message":"사용자를 찾을 수 없습니다"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async Object.joinQueue (api.ts:53:22)
+    at async handleQuickMatch (Home.tsx:45:22)
+Mt.forEach.n.<computed> @ Console.js:61Understand this error
+VM87 recaptcha__ko.js:494 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:494Understand this error
+VM87 recaptcha__ko.js:494 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+(anonymous) @ VM87 recaptcha__ko.js:494Understand this error
+VM87 recaptcha__ko.js:494 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+(anonymous) @ VM87 recaptcha__ko.js:494Understand this error
+f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/api/queue/join:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+Console.js:61 Bot match error: Error: 404: {"error":"USER_NOT_FOUND","message":"사용자를 찾을 수 없습니다"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async Object.joinQueue (api.ts:53:22)
+    at async handleBotMatch (Home.tsx:73:22)
+Mt.forEach.n.<computed> @ Console.js:61Understand this error
+f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/api/queue/join:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+Console.js:61 Matchmaking error: Error: 404: {"error":"USER_NOT_FOUND","message":"사용자를 찾을 수 없습니다"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async Object.joinQueue (api.ts:53:22)
+    at async handleQuickMatch (Home.tsx:45:22)
+Mt.forEach.n.<computed> @ Console.js:61Understand this error
+injected.js:253  POST https://f8f30ce4-f0e3-4816-8e85-3aeb48391a0b-00-2py87ihvg20fi.spock.replit.dev/api/queue/join 404 (Not Found)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+apiRequest @ queryClient.ts:15
+joinQueue @ api.ts:53
+handleBotMatch @ Home.tsx:73
+handlePracticeGame @ Home.tsx:96
+callCallback2 @ chunk-WERSD76P.js?v=259a7f95:3674
+invokeGuardedCallbackDev @ chunk-WERSD76P.js?v=259a7f95:3699
+invokeGuardedCallback @ chunk-WERSD76P.js?v=259a7f95:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-WERSD76P.js?v=259a7f95:3736
+executeDispatch @ chunk-WERSD76P.js?v=259a7f95:7014
+processDispatchQueueItemsInOrder @ chunk-WERSD76P.js?v=259a7f95:7034
+processDispatchQueue @ chunk-WERSD76P.js?v=259a7f95:7043
+dispatchEventsForPlugins @ chunk-WERSD76P.js?v=259a7f95:7051
+(anonymous) @ chunk-WERSD76P.js?v=259a7f95:7174
+batchedUpdates$1 @ chunk-WERSD76P.js?v=259a7f95:18913
+batchedUpdates @ chunk-WERSD76P.js?v=259a7f95:3579
+dispatchEventForPluginEventSystem @ chunk-WERSD76P.js?v=259a7f95:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-WERSD76P.js?v=259a7f95:5478
+dispatchEvent @ chunk-WERSD76P.js?v=259a7f95:5472
+dispatchDiscreteEvent @ chunk-WERSD76P.js?v=259a7f95:5449Understand this error
+Console.js:61 Bot match error: Error: 404: {"error":"USER_NOT_FOUND","message":"사용자를 찾을 수 없습니다"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async Object.joinQueue (api.ts:53:22)
+    at async handleBotMatch (Home.tsx:73:22)
