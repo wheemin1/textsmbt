@@ -1,4 +1,4 @@
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import RoundDots from "@/components/RoundDots";
 import WordInput from "@/components/WordInput";
@@ -9,6 +9,7 @@ import { useGameState } from "@/hooks/useGameState";
 export default function Game() {
   const params = useParams<{ gameId?: string }>();
   const gameId = params.gameId || null;
+  const [, setLocation] = useLocation();
   
   const { gameState, isLoading, submitWord, timeRemaining } = useGameState(gameId);
 

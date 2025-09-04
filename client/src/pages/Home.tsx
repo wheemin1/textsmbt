@@ -107,7 +107,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 blur-3xl -z-10"></div>
         </div>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          단어의 의미 유사도로 승부하는 실시간 대전 게임<br>
+          단어의 의미 유사도로 승부하는 실시간 대전 게임<br />
           <span className="text-accent font-medium">5라운드 동안 가장 높은 점수를 획득하세요!</span>
         </p>
       </div>

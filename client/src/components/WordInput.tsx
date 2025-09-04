@@ -22,7 +22,7 @@ export default function WordInput({ onSubmit, disabled = false, gameId }: WordIn
     queryKey: ['/api/words/suggest', word],
     enabled: word.length >= 1,
     staleTime: 30000, // Cache suggestions for 30 seconds
-  });
+  }) as { data?: { suggestions: string[] } };
 
   useEffect(() => {
     if (word.length >= 1 && suggestions?.suggestions?.length > 0) {
@@ -89,7 +89,7 @@ export default function WordInput({ onSubmit, disabled = false, gameId }: WordIn
             {/* Autocomplete Dropdown */}
             {showSuggestions && suggestions?.suggestions && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto z-20">
-                {suggestions.suggestions.map((suggestion, index) => (
+                {suggestions.suggestions.map((suggestion: string, index: number) => (
                   <div
                     key={`${suggestion}-${index}`}
                     className="px-4 py-3 hover:bg-accent/10 cursor-pointer border-b border-border last:border-b-0 transition-colors"

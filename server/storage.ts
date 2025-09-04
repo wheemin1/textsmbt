@@ -66,10 +66,17 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const now = new Date();
     const game: Game = { 
-      ...insertGame, 
+      ...insertGame,
       id, 
       createdAt: now,
-      updatedAt: now 
+      updatedAt: now,
+      status: insertGame.status || 'waiting',
+      player2Id: insertGame.player2Id || null,
+      isBot: insertGame.isBot || false,
+      botDifficulty: insertGame.botDifficulty || null,
+      currentRound: insertGame.currentRound || 1,
+      rounds: insertGame.rounds || [],
+      winnerId: insertGame.winnerId || null
     };
     this.games.set(id, game);
     return game;
@@ -116,7 +123,8 @@ export class MemStorage implements IStorage {
     const entry: MatchmakingEntry = { 
       ...insertEntry, 
       id,
-      createdAt: new Date() 
+      createdAt: new Date(),
+      language: insertEntry.language || 'ko'
     };
     this.queue.set(id, entry);
     return entry;
@@ -129,7 +137,7 @@ export class MemStorage implements IStorage {
   }
 
   async removeFromQueue(userId: string): Promise<void> {
-    for (const [id, entry] of this.queue) {
+    for (const [id, entry] of this.queue.entries()) {
       if (entry.userId === userId) {
         this.queue.delete(id);
         break;
