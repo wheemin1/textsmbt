@@ -1,11 +1,14 @@
-import { type User, type Game, type GameSubmission, type MatchmakingEntry, type InsertUser, type InsertGame, type InsertGameSubmission, type InsertMatchmaking } from "@shared/schema";
+import { type User, type Game, type GameSubmission, type MatchmakingEntry, type InsertUser, type InsertGame, type InsertGameSubmission, type InsertMatchmaking, users, games, gameSubmissions, matchmakingQueue } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // Users
+  // Users  
   getUser(id: string): Promise<User | undefined>;
   getUserByNickname(nickname: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: any): Promise<User>;
   
   // Games
   getGame(id: string): Promise<Game | undefined>;
@@ -152,4 +155,128 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByNickname(nickname: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.nickname, nickname));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getGame(id: string): Promise<Game | undefined> {
+    const [game] = await db.select().from(games).where(eq(games.id, id));
+    return game || undefined;
+  }
+
+  async createGame(insertGame: InsertGame): Promise<Game> {
+    const [game] = await db
+      .insert(games)
+      .values({
+        ...insertGame,
+        status: insertGame.status || 'waiting',
+        player2Id: insertGame.player2Id || null,
+        isBot: insertGame.isBot || false,
+        botDifficulty: insertGame.botDifficulty || null,
+        currentRound: insertGame.currentRound || 1,
+        rounds: insertGame.rounds || [],
+        winnerId: insertGame.winnerId || null
+      })
+      .returning();
+    return game;
+  }
+
+  async updateGame(id: string, updates: Partial<Game>): Promise<Game | undefined> {
+    const [game] = await db
+      .update(games)
+      .set(updates)
+      .where(eq(games.id, id))
+      .returning();
+    return game || undefined;
+  }
+
+  async getGameSubmissions(gameId: string): Promise<GameSubmission[]> {
+    return await db
+      .select()
+      .from(gameSubmissions)
+      .where(eq(gameSubmissions.gameId, gameId))
+      .orderBy(desc(gameSubmissions.submittedAt));
+  }
+
+  async createSubmission(insertSubmission: InsertGameSubmission): Promise<GameSubmission> {
+    const [submission] = await db
+      .insert(gameSubmissions)
+      .values(insertSubmission)
+      .returning();
+    return submission;
+  }
+
+  async getSubmissionsByRound(gameId: string, round: number): Promise<GameSubmission[]> {
+    return await db
+      .select()
+      .from(gameSubmissions)
+      .where(eq(gameSubmissions.gameId, gameId))
+      .where(eq(gameSubmissions.round, round));
+  }
+
+  async addToQueue(insertEntry: InsertMatchmaking): Promise<MatchmakingEntry> {
+    const [entry] = await db
+      .insert(matchmakingQueue)
+      .values({
+        ...insertEntry,
+        language: insertEntry.language || 'ko'
+      })
+      .returning();
+    return entry;
+  }
+
+  async findQueueMatch(userId: string, language: string): Promise<MatchmakingEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(matchmakingQueue)
+      .where(eq(matchmakingQueue.language, language))
+      .orderBy(desc(matchmakingQueue.createdAt))
+      .limit(1);
+    return entry?.userId !== userId ? entry : undefined;
+  }
+
+  async removeFromQueue(userId: string): Promise<void> {
+    await db.delete(matchmakingQueue).where(eq(matchmakingQueue.userId, userId));
+  }
+
+  async getQueuePosition(userId: string): Promise<number> {
+    const entries = await db
+      .select()
+      .from(matchmakingQueue)
+      .orderBy(desc(matchmakingQueue.createdAt));
+    return entries.findIndex(entry => entry.userId === userId) + 1;
+  }
+
+  async upsertUser(userData: any): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+}
+
+export const storage = new DatabaseStorage();

@@ -185,23 +185,20 @@ export default function Home() {
           <CardContent className="p-6">
             <div className="flex items-center space-x-4 mb-4">
               <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                <i className="fas fa-users text-muted-foreground"></i>
+                <i className="fas fa-history text-muted-foreground"></i>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-card-foreground">친구 초대</h3>
-                <p className="text-sm text-muted-foreground">링크로 친구와 대전하기</p>
+                <h3 className="text-lg font-semibold text-card-foreground">게임 기록</h3>
+                <p className="text-sm text-muted-foreground">지난 대전 결과 확인</p>
               </div>
             </div>
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => toast({ 
-                title: "준비 중", 
-                description: "친구 초대 기능은 곧 출시됩니다!" 
-              })}
-              data-testid="button-invite-friend"
+              onClick={() => window.location.href = '/game-history'}
+              data-testid="button-game-history"
             >
-              초대 링크 생성
+              기록 보기
             </Button>
           </CardContent>
         </Card>

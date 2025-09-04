@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { gameEngine } from "./services/gameEngine";
 import { word2vecService } from "./services/word2vec";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 
 // Request validation schemas
@@ -20,6 +21,9 @@ const submitWordSchema = z.object({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Setup authentication
+  await setupAuth(app);
 
   // WebSocket server for real-time game updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -71,7 +75,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Create or get user by nickname
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Create or get user by nickname (for non-auth users)
   app.post("/api/users", async (req, res) => {
     try {
       const { nickname } = req.body;

@@ -1,12 +1,28 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nickname: varchar("nickname", { length: 20 }).notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const games = pgTable("games", {
@@ -72,6 +88,7 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertGame = z.infer<typeof insertGameSchema>;
 export type InsertGameSubmission = z.infer<typeof insertGameSubmissionSchema>;
 export type InsertMatchmaking = z.infer<typeof insertMatchmakingSchema>;
+export type UpsertUser = typeof users.$inferInsert;
 
 // Game state types
 export interface RoundData {
