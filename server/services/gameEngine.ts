@@ -255,7 +255,7 @@ class GameEngine {
   async createGame(player1Id: string, player2Id?: string, isBot: boolean = false): Promise<Game> {
     const game = await storage.createGame({
       player1Id,
-      player2Id: player2Id || (isBot ? "bot" : undefined),
+      player2Id: isBot ? "bot" : player2Id,
       isBot,
       botDifficulty: isBot ? "normal" : undefined,
       status: "active",

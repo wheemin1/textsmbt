@@ -34,7 +34,7 @@ export const users = pgTable("users", {
 export const games = pgTable("games", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   player1Id: varchar("player1_id").references(() => users.id).notNull(),
-  player2Id: varchar("player2_id").references(() => users.id),
+  player2Id: varchar("player2_id"),
   isBot: boolean("is_bot").default(false).notNull(),
   botDifficulty: varchar("bot_difficulty", { length: 20 }),
   status: varchar("status", { length: 20 }).notNull().default("waiting"), // waiting, active, completed
@@ -48,7 +48,7 @@ export const games = pgTable("games", {
 export const gameSubmissions = pgTable("game_submissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   gameId: varchar("game_id").references(() => games.id).notNull(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
+  userId: varchar("user_id").notNull(),
   round: integer("round").notNull(),
   word: varchar("word", { length: 50 }).notNull(),
   score: integer("score").notNull(),

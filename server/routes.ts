@@ -224,32 +224,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add to queue
         await storage.addToQueue({ userId: actualUserId, language });
         
-        // Set timeout for bot match
-        setTimeout(async () => {
-          try {
-            // Check if still in queue
-            const position = await storage.getQueuePosition(actualUserId);
-            if (position > 0) {
-              // Create bot game
-              await storage.removeFromQueue(actualUserId);
-              const game = await gameEngine.createGame(actualUserId, undefined, true);
-              
-              // Notify client via WebSocket
-              broadcastToGame(game.id, {
-                type: 'game_found',
-                gameId: game.id,
-                isBot: true,
-                botDifficulty: 'normal'
-              });
-            }
-          } catch (error) {
-            console.error('Bot match timeout error:', error);
-          }
-        }, 12000); // 12 seconds
-
+        // For development, immediately create bot game if no match found
+        await storage.removeFromQueue(actualUserId);
+        const game = await gameEngine.createGame(actualUserId, undefined, true);
+        
         res.json({
-          queuePosition: 1,
-          estimatedWait: "최대 12초"
+          gameId: game.id,
+          isBot: true,
+          opponent: {
+            nickname: "AI 봇"
+          }
         });
       }
     } catch (error) {
