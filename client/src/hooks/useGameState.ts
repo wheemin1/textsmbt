@@ -69,7 +69,7 @@ export function useGameState(gameId: string | null): GameStateHook {
 
   // Timer countdown
   useEffect(() => {
-    if (!gameState || gameState.status !== 'active') return;
+    if (!gameState || gameState?.status !== 'active') return;
 
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
@@ -82,14 +82,14 @@ export function useGameState(gameId: string | null): GameStateHook {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameState?.currentRound || 0]);
+  }, [gameState?.currentRound]);
 
   // Reset timer when round changes
   useEffect(() => {
     if (gameState?.currentRound) {
       setTimeRemaining(15);
     }
-  }, [gameState?.currentRound || 0]);
+  }, [gameState?.currentRound]);
 
   const submitWord = async (word: string) => {
     if (!gameId || isSubmitting) return;

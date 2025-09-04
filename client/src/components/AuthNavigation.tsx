@@ -50,7 +50,7 @@ export default function AuthNavigation() {
         >
           <i className="fas fa-sign-out-alt mr-1"></i>
           로그아웃
-        </Button>on>
+        </Button>
       </div>
     </div>
   );

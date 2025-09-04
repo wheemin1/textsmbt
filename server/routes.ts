@@ -112,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: mockUser.email,
         firstName: mockUser.firstName,
         lastName: mockUser.lastName,
-        profileImageUrl: mockUser.profileImageUrl,
+        profileImageUrl: mockUser.profileImageUrl || undefined,
         accessToken: "mock_token",
         refreshToken: "mock_refresh_token"
       };

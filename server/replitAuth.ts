@@ -95,12 +95,12 @@ export async function setupAuth(app: Express) {
       // Store user session
       req.session.user = {
         id: payload.sub!,
-        email: payload.email || null,
-        firstName: payload.given_name || null,
-        lastName: payload.family_name || null,
-        profileImageUrl: payload.picture || null,
-        accessToken: tokens.access_token || null,
-        refreshToken: tokens.refresh_token || null,
+        email: payload.email || undefined,
+        firstName: payload.given_name || undefined,
+        lastName: payload.family_name || undefined,
+        profileImageUrl: payload.picture || undefined,
+        accessToken: tokens.access_token || undefined,
+        refreshToken: tokens.refresh_token || undefined,
       };
 
       await upsertUser(payload);

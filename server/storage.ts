@@ -167,7 +167,8 @@ export class MemStorage implements IStorage {
   }
 
   async removeFromQueue(userId: string): Promise<void> {
-    for (const [id, entry] of this.queue.entries()) {
+    const entries = Array.from(this.queue.entries());
+    for (const [id, entry] of entries) {
       if (entry.userId === userId) {
         this.queue.delete(id);
         break;
