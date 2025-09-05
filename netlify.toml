@@ -6,6 +6,7 @@
   base = ""
   publish = "client/dist"
   command = "cp package-client.json package.json && npm install --legacy-peer-deps --include=dev && npx vite build"
+  functions = ""
   
   # Build environment
   [build.environment]
