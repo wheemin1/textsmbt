@@ -10,12 +10,24 @@ echo "NPM version: $(npm --version)"
 echo "📦 Installing client dependencies only..."
 cp package-client.json package.json
 
-# Install with exact versions to avoid version conflicts
-npm install --legacy-peer-deps --no-optional
+# Install with exact versions - ensure vite is installed
+echo "Installing dependencies..."
+npm install --legacy-peer-deps
 
-# Build the client with explicit vite
+# Verify Vite installation
+echo "📋 Checking Vite installation..."
+if [ ! -f "./node_modules/.bin/vite" ]; then
+    echo "Vite not found in node_modules, installing globally..."
+    npm install -g vite@5.4.19
+    VITE_CMD="vite"
+else
+    echo "Vite found in node_modules"
+    VITE_CMD="./node_modules/.bin/vite"
+fi
+
+# Build the client
 echo "🔨 Building client application..."
-./node_modules/.bin/vite build
+$VITE_CMD build
 
 # Verify build output
 echo "✅ Verifying build output..."

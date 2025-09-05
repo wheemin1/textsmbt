@@ -5,7 +5,7 @@
   # Build settings
   base = ""
   publish = "client/dist"
-  command = "chmod +x build.sh && ./build.sh"
+  command = "cp package-client.json package.json && npm install --legacy-peer-deps && npx vite build"
   
   # Build environment
   [build.environment]
