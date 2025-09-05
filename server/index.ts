@@ -62,9 +62,14 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '3000', 10);
-  const host = process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';
+  const host = '0.0.0.0'; // 모든 네트워크 인터페이스에서 접근 가능
   
   server.listen(port, host, () => {
     log(`serving on ${host}:${port}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🌐 Network access available at:`);
+      console.log(`   - Local:    http://localhost:${port}`);
+      console.log(`   - Network:  http://[YOUR-IP]:${port}`);
+    }
   });
 })();

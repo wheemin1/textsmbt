@@ -1,7 +1,41 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 
 export default function Landing() {
+  const [nickname, setNickname] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!nickname.trim()) {
+      alert("닉네임을 입력해주세요");
+      return;
+    }
+
+    if (nickname.trim().length < 2 || nickname.trim().length > 20) {
+      alert("닉네임은 2-20자 사이로 입력해주세요");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      login(nickname.trim());
+      setLocation("/lobby");
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("로그인 중 오류가 발생했습니다");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 space-y-8">
       {/* Hero Section */}
@@ -14,7 +48,7 @@ export default function Landing() {
         </div>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           단어의 의미 유사도로 승부하는 실시간 대전 게임<br />
-          <span className="text-accent font-medium">로그인하고 다른 플레이어와 경쟁하세요!</span>
+          <span className="text-accent font-medium">닉네임을 입력하고 다른 플레이어와 경쟁하세요!</span>
         </p>
       </div>
 
@@ -29,46 +63,43 @@ export default function Landing() {
           
           <div>
             <h2 className="text-2xl font-bold text-card-foreground mb-2">게임 시작하기</h2>
-            <p className="text-muted-foreground">로그인하여 다른 플레이어와 대전하세요</p>
+            <p className="text-muted-foreground">닉네임을 입력하여 게임을 시작하세요</p>
           </div>
           
-          <Button
-            size="lg"
-            className="w-full h-14 rounded-full font-semibold"
-            onClick={async () => {
-              try {
-                const nickname = prompt("닉네임을 입력하세요 (개발용 모드):");
-                if (!nickname) return;
-
-                const response = await fetch("/api/auth/mock-login", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ nickname }),
-                  credentials: "include"
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                  console.log("Mock login success", data);
-                  window.location.reload();
-                } else {
-                  alert(`로그인 실패: ${data.message}`);
-                }
-              } catch (error) {
-                console.error("Login error:", error);
-                alert("로그인 중 오류가 발생했습니다");
-              }
-            }}
-            data-testid="button-login"
-          >
-            <i className="fas fa-sign-in-alt mr-2"></i>
-            로그인하기 (개발용)
-          </Button>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <Input
+              type="text"
+              placeholder="닉네임 (2-20자)"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="text-center"
+              maxLength={20}
+              autoFocus
+            />
+            
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full h-14 rounded-full font-semibold"
+              disabled={isLoading || !nickname.trim()}
+              data-testid="button-login"
+            >
+              {isLoading ? (
+                <>
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                  로그인 중...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-sign-in-alt mr-2"></i>
+                  게임 시작
+                </>
+              )}
+            </Button>
+          </form>
           
           <p className="text-xs text-muted-foreground">
-            개발 모드: 닉네임만 입력하면 로그인됩니다
+            닉네임은 로컬 저장되며 다른 기기에서도 같은 닉네임으로 플레이할 수 있습니다
           </p>
         </CardContent>
       </Card>

@@ -51,6 +51,8 @@ export default defineConfig(async () => ({
     }
   },
   server: {
+    host: '0.0.0.0', // 모든 네트워크 인터페이스에서 접근 가능
+    port: 5173,      // 기본 Vite 포트
     fs: {
       strict: true,
       deny: ["**/.*"],
