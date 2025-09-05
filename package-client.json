@@ -10,6 +10,7 @@
   "scripts": {
     "build": "vite build",
     "build:client": "vite build",
+    "build:netlify": "vite build",
     "netlify-build": "vite build",
     "dev:netlify": "netlify dev",
     "functions:serve": "netlify functions:serve"
