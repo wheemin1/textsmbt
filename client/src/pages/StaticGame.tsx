@@ -341,12 +341,43 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-      {/* Game Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          vs {gameState.opponent}
-        </h1>
+    <>
+      {/* 플로팅 상단 헤더 - 항상 고정 */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-lg border-b">
+        <div className="max-w-4xl mx-auto p-3">
+          <div className="flex justify-between items-center">
+            <div className="text-center">
+              <div className="text-xl font-bold text-red-600">⏰ {gameState.timeRemaining}초</div>
+              <div className="text-xs text-muted-foreground">남은 시간</div>
+            </div>
+            
+            {similarityStats && (
+              <div className="flex space-x-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-green-700">{similarityStats.top.toFixed(1)}</div>
+                  <div className="text-xs text-green-600">최고</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-blue-700">{similarityStats.top10.toFixed(1)}</div>
+                  <div className="text-xs text-blue-600">10위</div>
+                </div>
+              </div>
+            )}
+            
+            <div className="text-center">
+              <div className="text-lg font-bold text-primary">R{gameState.currentRound}/{gameState.maxRounds}</div>
+              <div className="text-xs text-muted-foreground">"{gameState.currentTarget}"</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-4xl px-4 py-8 space-y-6" style={{paddingTop: '100px'}}>
+        {/* Game Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            vs {gameState.opponent}
+          </h1>
         <div className="flex justify-center items-center space-x-8">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary">{user?.nickname}</div>
@@ -364,49 +395,19 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
         </div>
       </div>
 
-      {/* Round Info */}
-      <Card className="bg-card shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">
-            라운드 {gameState.currentRound}/{gameState.maxRounds}
-          </CardTitle>
-          <div className="text-3xl font-bold text-primary">
-            남은 시간: {gameState.timeRemaining}초
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* 꼬맨틀 스타일 유사도 통계 (게임 시작 후 통계가 있으면 표시) */}
+      {/* 꼬맨틀 스타일 유사도 통계 - 간소화된 상단 표시 */}
       {similarityStats && (
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg text-center text-blue-800">
-              📊 정답 단어 "{ gameState.currentTarget }" 유사도 통계
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="bg-green-100 p-3 rounded-lg border border-green-300">
+        <Card className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 shadow-md">
+          <CardContent className="p-4">
+            <div className="flex justify-center items-center space-x-8">
+              <div className="text-center">
                 <div className="text-sm text-green-700 font-medium">가장 유사한 단어</div>
                 <div className="text-2xl font-bold text-green-800">{similarityStats.top.toFixed(1)}</div>
-                <div className="text-xs text-green-600">유사도</div>
               </div>
-              <div className="bg-blue-100 p-3 rounded-lg border border-blue-300">
+              <div className="text-center">
                 <div className="text-sm text-blue-700 font-medium">10번째로 유사한 단어</div>
                 <div className="text-2xl font-bold text-blue-800">{similarityStats.top10.toFixed(1)}</div>
-                <div className="text-xs text-blue-600">유사도</div>
               </div>
-              <div className="bg-orange-100 p-3 rounded-lg border border-orange-300">
-                <div className="text-sm text-orange-700 font-medium">1000번째 유사도</div>
-                <div className="text-2xl font-bold text-orange-800">{similarityStats.rest.toFixed(1)}</div>
-                <div className="text-xs text-orange-600">기준점</div>
-              </div>
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-700 text-center">
-                💡 <strong>힌트:</strong> 정답 단어와 가장 유사한 단어의 유사도는 <strong>{similarityStats.top.toFixed(1)}</strong>이고, 
-                10번째로 유사한 단어의 유사도는 <strong>{similarityStats.top10.toFixed(1)}</strong>입니다.
-              </p>
             </div>
           </CardContent>
         </Card>
@@ -545,5 +546,6 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
         </Button>
       </div>
     </main>
+    </>
   );
 }
