@@ -48,6 +48,10 @@ temp/
 
 # Replit specific
 .replit
+.local/
+
+# FastText model files (too large for GitHub)
+data/fasttext/cc.ko.300.vec
 replit.nix
 server/public
 vite.config.ts.*
