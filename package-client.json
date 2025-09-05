@@ -10,7 +10,9 @@
   "scripts": {
     "build": "vite build",
     "build:client": "vite build",
-    "netlify-build": "vite build"
+    "netlify-build": "vite build",
+    "dev:netlify": "netlify dev",
+    "functions:serve": "netlify functions:serve"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

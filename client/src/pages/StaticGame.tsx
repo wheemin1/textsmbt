@@ -38,12 +38,13 @@ const BOT_WORDS = {
   hard: ["연애", "즐거움", "벗", "혈연", "생태", "멜로디", "탐험", "포부", "조화", "염원"]
 };
 
-// 실제 FastText 기반 유사도 계산
+// 개선된 Netlify Functions 기반 유사도 계산
 const calculateSimilarity = async (word1: string, word2: string): Promise<number> => {
   if (word1 === word2) return 100;
   
   try {
-    const response = await fetch("/api/words/similarity", {
+    // Netlify Functions 엔드포인트 사용
+    const response = await fetch("/.netlify/functions/similarity", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -64,20 +65,52 @@ const calculateSimilarity = async (word1: string, word2: string): Promise<number
   }
 };
 
-// Fallback 유사도 계산 (API 실패 시)
+// 개선된 Fallback 유사도 계산 (API 실패 시)
 const calculateFallbackSimilarity = (word1: string, word2: string): number => {
   if (word1 === word2) return 100;
   
-  // 글자 포함 여부로 간단한 유사도 계산
-  let score = 0;
-  for (let char of word1) {
-    if (word2.includes(char)) score += 15;
+  // 1. 공통 글자 계산
+  let commonChars = 0;
+  const word1Chars = word1.split('');
+  const word2Chars = word2.split('');
+  
+  for (const char of word1Chars) {
+    if (word2Chars.includes(char)) {
+      commonChars++;
+      // 중복 계산 방지를 위해 사용된 글자 제거
+      const index = word2Chars.indexOf(char);
+      word2Chars.splice(index, 1);
+    }
   }
   
-  // 길이 유사성
-  const lengthSimilarity = Math.max(0, 15 - Math.abs(word1.length - word2.length) * 3);
+  // 2. 길이 유사성
+  const lengthSimilarity = 1 - Math.abs(word1.length - word2.length) / Math.max(word1.length, word2.length);
   
-  return Math.min(80, score + lengthSimilarity + Math.random() * 10);
+  // 3. 글자 유사성
+  const charSimilarity = commonChars / Math.max(word1.length, word2.length);
+  
+  // 4. 의미적 카테고리 보너스 (간단한 버전)
+  const semanticGroups = [
+    ['가족', '어머니', '아버지', '부모', '형제', '자매'],
+    ['자연', '나무', '꽃', '산', '바다', '강'],
+    ['사랑', '행복', '기쁨', '슬픔', '마음'],
+    ['음식', '밥', '국', '김치', '고기'],
+    ['시간', '오늘', '어제', '내일', '아침']
+  ];
+  
+  let semanticBonus = 0;
+  for (const group of semanticGroups) {
+    if (group.includes(word1) && group.includes(word2)) {
+      semanticBonus = 0.4; // 같은 그룹이면 40% 보너스
+      break;
+    }
+  }
+  
+  // 가중 평균으로 최종 점수 계산
+  const finalScore = (lengthSimilarity * 30) + (charSimilarity * 40) + (semanticBonus * 30);
+  
+  // 랜덤 요소를 줄이고 더 일관성 있는 결과 제공
+  return Math.round(Math.min(85, Math.max(10, finalScore)));
 };
 
 export default function StaticGame({ params }: { params: { gameId: string } }) {

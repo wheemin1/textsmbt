@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유사도 API 테스트</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success { border-color: #28a745; }
+        .error { border-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>🔍 한국어 유사도 API 테스트</h1>
+    <p>Netlify Functions로 구현된 유사도 계산 API를 테스트합니다.</p>
+    
+    <div class="test-container">
+        <h3>수동 테스트</h3>
+        <div>
+            <input type="text" id="word1" placeholder="첫 번째 단어" value="자연">
+            <input type="text" id="word2" placeholder="두 번째 단어" value="나무">
+            <button onclick="testSimilarity()">유사도 계산</button>
+        </div>
+        <div id="manual-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-container">
+        <h3>자동 테스트</h3>
+        <button onclick="runAutoTests()">자동 테스트 실행</button>
+        <div id="auto-results" class="result" style="display: none;"></div>
+    </div>
+    
+    <script>
+        // 수동 유사도 테스트
+        async function testSimilarity() {
+            const word1 = document.getElementById('word1').value.trim();
+            const word2 = document.getElementById('word2').value.trim();
+            const resultDiv = document.getElementById('manual-result');
+            
+            if (!word1 || !word2) {
+                showResult(resultDiv, '두 단어를 모두 입력해주세요.', 'error');
+                return;
+            }
+            
+            showResult(resultDiv, '계산 중...', 'info');
+            
+            try {
+                const response = await fetch('/.netlify/functions/similarity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ word1, word2 })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const result = `
+                        <h4>✅ 성공!</h4>
+                        <p><strong>${data.word1}</strong>과 <strong>${data.word2}</strong>의 유사도</p>
+                        <p>점수: <strong>${data.similarity}</strong>/100</p>
+                        <p>등급: <strong>${data.rank}</strong></p>
+                        <p>계산 시간: ${data.timestamp}</p>
+                    `;
+                    showResult(resultDiv, result, 'success');
+                } else {
+                    throw new Error(data.message || 'API 오류');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ 오류: ${error.message}`, 'error');
+            }
+        }
+        
+        // 자동 테스트 실행
+        async function runAutoTests() {
+            const testCases = [
+                { word1: '사랑', word2: '행복', expected: 'HIGH' },
+                { word1: '자연', word2: '나무', expected: 'HIGH' },
+                { word1: '가족', word2: '어머니', expected: 'HIGH' },
+                { word1: '음식', word2: '밥', expected: 'HIGH' },
+                { word1: '컴퓨터', word2: '사과', expected: 'LOW' },
+                { word1: '시간', word2: '공간', expected: 'MEDIUM' }
+            ];
+            
+            const resultDiv = document.getElementById('auto-results');
+            showResult(resultDiv, '자동 테스트 실행 중...', 'info');
+            
+            let results = '<h4>🤖 자동 테스트 결과</h4>';
+            let passedTests = 0;
+            
+            for (const testCase of testCases) {
+                try {
+                    const response = await fetch('/.netlify/functions/similarity', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            word1: testCase.word1, 
+                            word2: testCase.word2 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        const passed = data.rank === testCase.expected;
+                        if (passed) passedTests++;
+                        
+                        results += `
+                            <div style="margin: 10px 0; padding: 10px; background: ${passed ? '#d4edda' : '#f8d7da'}; border-radius: 4px;">
+                                <strong>${testCase.word1}</strong> vs <strong>${testCase.word2}</strong>: 
+                                ${data.similarity}점 (${data.rank}) 
+                                ${passed ? '✅' : '❌'}
+                            </div>
+                        `;
+                    } else {
+                        results += `
+                            <div style="margin: 10px 0; padding: 10px; background: #f8d7da; border-radius: 4px;">
+                                <strong>${testCase.word1}</strong> vs <strong>${testCase.word2}</strong>: 
+                                API 오류 - ${data.message}
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    results += `
+                        <div style="margin: 10px 0; padding: 10px; background: #f8d7da; border-radius: 4px;">
+                            <strong>${testCase.word1}</strong> vs <strong>${testCase.word2}</strong>: 
+                            네트워크 오류 - ${error.message}
+                        </div>
+                    `;
+                }
+            }
+            
+            results += `<p><strong>결과: ${passedTests}/${testCases.length} 테스트 통과</strong></p>`;
+            
+            showResult(resultDiv, results, passedTests === testCases.length ? 'success' : 'error');
+        }
+        
+        // 결과 표시 헬퍼 함수
+        function showResult(element, content, type) {
+            element.innerHTML = content;
+            element.style.display = 'block';
+            element.className = `result ${type}`;
+        }
+        
+        // Enter 키로 테스트 실행
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && (e.target.id === 'word1' || e.target.id === 'word2')) {
+                testSimilarity();
+            }
+        });
+        
+        // 페이지 로드 시 자동 테스트 안내
+        console.log('🔍 한국어 유사도 API 테스트 페이지');
+        console.log('개발자 도구에서 네트워크 탭을 확인하여 API 호출을 모니터링할 수 있습니다.');
+    </script>
+</body>
+</html>
