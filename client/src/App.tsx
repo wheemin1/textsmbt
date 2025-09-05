@@ -1,5 +1,5 @@
 
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,6 +16,7 @@ import AuthNavigation from "@/components/AuthNavigation";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (isLoading) {
     return (
@@ -27,15 +28,21 @@ function Router() {
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+      {!isAuthenticated ? (
+        <>
+          <Route path="/landing" component={Landing} />
+          <Route path="/" component={Landing} />
+        </>
       ) : (
         <>
           <Route path="/" component={Home} />
+          <Route path="/home" component={Home} />
+          <Route path="/lobby" component={Home} />
           <Route path="/game/:gameId" component={StaticGame} />
           <Route path="/settings" component={Settings} />
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/game-history" component={GameHistory} />
+          <Route path="/landing" component={() => { setLocation('/'); return null; }} />
         </>
       )}
     </Switch>

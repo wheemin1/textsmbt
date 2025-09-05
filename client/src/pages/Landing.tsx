@@ -1,15 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 
 export default function Landing() {
   const [nickname, setNickname] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+
+  // 이미 로그인된 사용자는 홈으로 리다이렉트
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/");
+    }
+  }, [isAuthenticated, setLocation]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,8 +33,13 @@ export default function Landing() {
 
     setIsLoading(true);
     try {
-      login(nickname.trim());
-      setLocation("/lobby");
+      const user = login(nickname.trim());
+      if (user) {
+        // 로그인 성공 시 짧은 딜레이 후 홈으로 이동 (상태 업데이트 시간 확보)
+        setTimeout(() => {
+          setLocation("/");
+        }, 100);
+      }
     } catch (error) {
       console.error("Login error:", error);
       alert("로그인 중 오류가 발생했습니다");
