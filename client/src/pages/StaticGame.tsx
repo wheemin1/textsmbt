@@ -5,63 +5,68 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { StaticGameEngine } from "@/lib/staticGameEngine";
 
-// 게임 엔진에서 가져온 타입들
-interface StaticGameState {
+// 간단한 게임 상태 타입
+interface SimpleGameState {
   gameId: string;
+  difficulty: string;
+  opponent: string;
   currentRound: number;
+  maxRounds: number;
   timeRemaining: number;
-  isBot: boolean;
-  opponent: {
-    nickname: string;
-    type: "human" | "bot";
-  };
-  rounds: StaticRoundData[];
-  myBestScore: number;
-  opponentBestScore: number;
-  status: "waiting" | "active" | "completed";
-  winnerId?: string;
-  targetWords: string[];
+  status: "active" | "completed";
+  playerScore: number;
+  botScore: number;
+  currentTarget?: string;
+  roundResults: Array<{
+    round: number;
+    target: string;
+    playerWord: string;
+    playerScore: number;
+    botWord: string;
+    botScore: number;
+  }>;
 }
 
-interface StaticRoundData {
-  round: number;
-  player1Word?: string;
-  player1Score?: number;
-  player2Word?: string;
-  player2Score?: number;
-  completed: boolean;
-  completedAt?: string;
-  targetWord: string;
-}
+const TARGET_WORDS = [
+  "사랑", "행복", "친구", "가족", "자연", "음악", "여행", "꿈", "평화", "희망"
+];
 
-interface GameResult {
-  gameId: string;
-  round: number;
-  myScore: number;
-  myWord: string;
-  opponentScore: number;
-  opponentWord: string;
-  roundComplete: boolean;
-  gameComplete: boolean;
-  winner?: string;
-  targetWord: string;
-}
+const BOT_WORDS = {
+  easy: ["좋아", "친절", "사람", "집", "나무", "소리", "길", "마음", "시간", "빛"],
+  medium: ["애정", "기쁨", "동료", "혈족", "환경", "선율", "모험", "이상", "화합", "기대"],
+  hard: ["연애", "즐거움", "벗", "혈연", "생태", "멜로디", "탐험", "포부", "조화", "염원"]
+};
+
+// 간단한 유사도 계산
+const calculateSimilarity = (word1: string, word2: string): number => {
+  if (word1 === word2) return 100;
+  
+  // 글자 포함 여부로 간단한 유사도 계산
+  let score = 0;
+  for (let char of word1) {
+    if (word2.includes(char)) score += 20;
+  }
+  
+  // 길이 유사성
+  const lengthSimilarity = Math.max(0, 20 - Math.abs(word1.length - word2.length) * 5);
+  
+  return Math.min(100, score + lengthSimilarity + Math.random() * 30);
+};
 
 export default function StaticGame({ params }: { params: { gameId: string } }) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [gameState, setGameState] = useState<StaticGameState | null>(null);
+  const [gameState, setGameState] = useState<SimpleGameState | null>(null);
   const [currentWord, setCurrentWord] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [gameResult, setGameResult] = useState<GameResult | null>(null);
 
   useEffect(() => {
-    const state = StaticGameEngine.getGameState(params.gameId);
-    if (!state) {
+    // 로컬 스토리지에서 게임 상태 로드
+    const savedGame = localStorage.getItem(`game_${params.gameId}`);
+    if (!savedGame) {
       toast({
         title: "게임을 찾을 수 없습니다",
         description: "게임이 존재하지 않거나 만료되었습니다.",
@@ -70,85 +75,145 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
       setLocation("/");
       return;
     }
-    setGameState(state);
 
-    // 게임 상태 업데이트 리스너
-    const interval = setInterval(() => {
-      const updatedState = StaticGameEngine.getGameState(params.gameId);
-      if (updatedState) {
-        setGameState(updatedState);
-        
-        // 게임 완료 시 자동으로 결과 업데이트
-        if (updatedState.status === "completed" && !gameResult) {
-          const lastRound = updatedState.rounds[updatedState.rounds.length - 1];
-          if (lastRound && lastRound.completed) {
-            setGameResult({
-              gameId: params.gameId,
-              round: lastRound.round,
-              myScore: lastRound.player1Score || 0,
-              myWord: lastRound.player1Word || "",
-              opponentScore: lastRound.player2Score || 0,
-              opponentWord: lastRound.player2Word || "",
-              roundComplete: true,
-              gameComplete: true,
-              winner: updatedState.winnerId,
-              targetWord: lastRound.targetWord
-            });
-          }
-        }
-      }
-    }, 100);
-
-    return () => {
-      clearInterval(interval);
+    const gameInfo = JSON.parse(savedGame);
+    const newGameState: SimpleGameState = {
+      gameId: params.gameId,
+      difficulty: gameInfo.difficulty,
+      opponent: gameInfo.opponent,
+      currentRound: 1,
+      maxRounds: 5,
+      timeRemaining: 15,
+      status: "active",
+      playerScore: 0,
+      botScore: 0,
+      currentTarget: TARGET_WORDS[0],
+      roundResults: []
     };
-  }, [params.gameId, toast, setLocation, gameResult]);
+
+    setGameState(newGameState);
+
+    // 타이머 시작
+    const timer = setInterval(() => {
+      setGameState(prev => {
+        if (!prev || prev.status !== "active") return prev;
+        
+        const newTime = prev.timeRemaining - 1;
+        if (newTime <= 0) {
+          // 시간 초과 시 자동 제출
+          handleAutoSubmit(prev);
+          return prev;
+        }
+        
+        return { ...prev, timeRemaining: newTime };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [params.gameId, toast, setLocation]);
+
+  const handleAutoSubmit = (currentGameState: SimpleGameState) => {
+    // 시간 초과 시 빈 단어로 처리
+    submitRound(currentGameState, "");
+  };
+
+  const submitRound = (currentGameState: SimpleGameState, word: string) => {
+    const target = currentGameState.currentTarget || "";
+    const playerScore = word ? calculateSimilarity(word, target) : 0;
+    
+    // 봇 단어 선택
+    const botWordList = BOT_WORDS[currentGameState.difficulty as keyof typeof BOT_WORDS] || BOT_WORDS.easy;
+    const botWord = botWordList[currentGameState.currentRound - 1] || botWordList[0];
+    let botScore = calculateSimilarity(botWord, target);
+    
+    // 난이도별 봇 점수 조정
+    switch (currentGameState.difficulty) {
+      case "easy":
+        botScore = Math.min(botScore, 60 + Math.random() * 20);
+        break;
+      case "medium":
+        botScore = Math.min(botScore, 75 + Math.random() * 15);
+        break;
+      case "hard":
+        botScore = Math.min(botScore, 85 + Math.random() * 10);
+        break;
+    }
+    botScore = Math.round(botScore);
+
+    const roundResult = {
+      round: currentGameState.currentRound,
+      target,
+      playerWord: word || "(시간 초과)",
+      playerScore: Math.round(playerScore),
+      botWord,
+      botScore
+    };
+
+    const newRoundResults = [...currentGameState.roundResults, roundResult];
+    const newPlayerScore = currentGameState.playerScore + roundResult.playerScore;
+    const newBotScore = currentGameState.botScore + roundResult.botScore;
+
+    if (currentGameState.currentRound >= currentGameState.maxRounds) {
+      // 게임 종료
+      const winner = newPlayerScore > newBotScore ? "player" : 
+                    newBotScore > newPlayerScore ? "bot" : "tie";
+      
+      setGameState({
+        ...currentGameState,
+        status: "completed",
+        playerScore: newPlayerScore,
+        botScore: newBotScore,
+        roundResults: newRoundResults
+      });
+
+      setTimeout(() => {
+        if (winner === "player") {
+          toast({
+            title: "🎉 승리!",
+            description: `축하합니다! ${newPlayerScore}점으로 봇을 이겼습니다!`,
+            variant: "default",
+          });
+        } else if (winner === "bot") {
+          toast({
+            title: "😅 패배",
+            description: `아쉽지만 봇이 ${newBotScore}점으로 이겼습니다.`,
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "🤝 무승부",
+            description: `${newPlayerScore}점으로 박빙의 승부였습니다!`,
+            variant: "default",
+          });
+        }
+      }, 1000);
+    } else {
+      // 다음 라운드
+      setGameState({
+        ...currentGameState,
+        currentRound: currentGameState.currentRound + 1,
+        timeRemaining: 15,
+        playerScore: newPlayerScore,
+        botScore: newBotScore,
+        currentTarget: TARGET_WORDS[currentGameState.currentRound],
+        roundResults: newRoundResults
+      });
+
+      toast({
+        title: "라운드 완료!",
+        description: `"${word || '(시간 초과)'}"로 ${roundResult.playerScore}점 획득!`,
+        variant: "default",
+      });
+    }
+  };
 
   const handleSubmitWord = async () => {
-    if (!currentWord.trim() || isSubmitting) return;
+    if (!currentWord.trim() || isSubmitting || !gameState) return;
     
     setIsSubmitting(true);
     try {
-      const result = await StaticGameEngine.submitWord(params.gameId, currentWord);
-      setGameResult(result);
+      submitRound(gameState, currentWord.trim());
       setCurrentWord("");
-      
-      toast({
-        title: "단어 제출 완료!",
-        description: `"${result.myWord}"로 ${result.myScore}점을 획득했습니다.`,
-        variant: "default",
-      });
-      
-      // 게임 완료 시 결과 표시
-      if (result.gameComplete) {
-        setTimeout(() => {
-          if (result.winner === "player") {
-            toast({
-              title: "🎉 승리!",
-              description: "축하합니다! 봇을 이겼습니다!",
-              variant: "default",
-            });
-          } else if (result.winner === "opponent") {
-            toast({
-              title: "😅 패배",
-              description: "아쉽지만 봇이 이겼습니다. 다시 도전해보세요!",
-              variant: "default",
-            });
-          } else {
-            toast({
-              title: "🤝 무승부",
-              description: "박빙의 승부였습니다!",
-              variant: "default",
-            });
-          }
-        }, 1000);
-      }
-    } catch (error: any) {
-      toast({
-        title: "오류 발생",
-        description: error?.message || "단어 제출 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
     } finally {
       setIsSubmitting(false);
     }
@@ -161,7 +226,7 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
   };
 
   const quitGame = () => {
-    StaticGameEngine.cleanupGame(params.gameId);
+    localStorage.removeItem(`game_${params.gameId}`);
     setLocation("/");
   };
 
@@ -173,27 +238,24 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
     );
   }
 
-  const currentRoundData = gameState.rounds[gameState.rounds.length - 1];
-  const targetWord = gameState.targetWords[gameState.currentRound - 1];
-
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
       {/* Game Header */}
       <div className="text-center space-y-4">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          vs {gameState.opponent.nickname}
+          vs {gameState.opponent}
         </h1>
         <div className="flex justify-center items-center space-x-8">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary">{user?.nickname}</div>
-            <div className="text-sm text-muted-foreground">최고: {gameState.myBestScore}</div>
+            <div className="text-lg text-primary">{gameState.playerScore}점</div>
           </div>
           <div className="text-center">
             <div className="text-lg text-muted-foreground">vs</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-accent">{gameState.opponent.nickname}</div>
-            <div className="text-sm text-muted-foreground">최고: {gameState.opponentBestScore}</div>
+            <div className="text-2xl font-bold text-accent">{gameState.opponent}</div>
+            <div className="text-lg text-accent">{gameState.botScore}점</div>
           </div>
         </div>
       </div>
@@ -202,7 +264,7 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
       <Card className="bg-card shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">
-            라운드 {gameState.currentRound}/5
+            라운드 {gameState.currentRound}/{gameState.maxRounds}
           </CardTitle>
           <div className="text-3xl font-bold text-primary">
             남은 시간: {gameState.timeRemaining}초
@@ -216,7 +278,7 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
           <CardContent className="p-8 text-center space-y-6">
             <div>
               <h2 className="text-2xl font-bold mb-2">목표 단어와 유사한 단어를 입력하세요!</h2>
-              <p className="text-muted-foreground">목표 단어: <span className="font-bold text-primary">"{targetWord}"</span></p>
+              <p className="text-muted-foreground">목표 단어: <span className="font-bold text-primary text-2xl">"{gameState.currentTarget}"</span></p>
             </div>
             
             <div className="max-w-md mx-auto space-y-4">
@@ -255,34 +317,6 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
         </Card>
       )}
 
-      {/* Round Results */}
-      {gameResult && (
-        <Card className="bg-card shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center">라운드 {gameResult.round} 결과</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="text-center p-4 bg-primary/10 rounded-lg">
-                <h3 className="font-bold text-primary mb-2">{user?.nickname}</h3>
-                <div className="text-2xl font-bold">{gameResult.myWord || "(시간 초과)"}</div>
-                <div className="text-xl text-primary">{gameResult.myScore}점</div>
-              </div>
-              <div className="text-center p-4 bg-accent/10 rounded-lg">
-                <h3 className="font-bold text-accent mb-2">{gameState.opponent.nickname}</h3>
-                <div className="text-2xl font-bold">{gameResult.opponentWord}</div>
-                <div className="text-xl text-accent">{gameResult.opponentScore}점</div>
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                목표 단어: <span className="font-bold">"{gameResult.targetWord}"</span>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Game Complete */}
       {gameState.status === "completed" && (
         <Card className="bg-card shadow-lg">
@@ -291,13 +325,13 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
-              {gameState.winnerId === "player" && (
+              {gameState.playerScore > gameState.botScore && (
                 <div className="text-3xl font-bold text-green-600">🎉 승리!</div>
               )}
-              {gameState.winnerId === "opponent" && (
+              {gameState.botScore > gameState.playerScore && (
                 <div className="text-3xl font-bold text-red-600">😅 패배</div>
               )}
-              {gameState.winnerId === "tie" && (
+              {gameState.playerScore === gameState.botScore && (
                 <div className="text-3xl font-bold text-yellow-600">🤝 무승부</div>
               )}
             </div>
@@ -306,15 +340,11 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="text-center p-4 bg-primary/10 rounded-lg">
                 <h3 className="font-bold text-primary mb-2">{user?.nickname}</h3>
-                <div className="text-2xl font-bold">
-                  {gameState.rounds.reduce((sum, r) => sum + (r.player1Score || 0), 0)}점
-                </div>
+                <div className="text-2xl font-bold">{gameState.playerScore}점</div>
               </div>
               <div className="text-center p-4 bg-accent/10 rounded-lg">
-                <h3 className="font-bold text-accent mb-2">{gameState.opponent.nickname}</h3>
-                <div className="text-2xl font-bold">
-                  {gameState.rounds.reduce((sum, r) => sum + (r.player2Score || 0), 0)}점
-                </div>
+                <h3 className="font-bold text-accent mb-2">{gameState.opponent}</h3>
+                <div className="text-2xl font-bold">{gameState.botScore}점</div>
               </div>
             </div>
 
@@ -333,26 +363,26 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
       )}
 
       {/* Round History */}
-      {gameState.rounds.length > 0 && (
+      {gameState.roundResults.length > 0 && (
         <Card className="bg-card shadow-lg">
           <CardHeader>
             <CardTitle className="text-center">라운드 기록</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {gameState.rounds.map((round, index) => (
+              {gameState.roundResults.map((result, index) => (
                 <div key={index} className="grid md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div className="text-center">
-                    <div className="font-bold">라운드 {round.round}</div>
-                    <div className="text-sm text-muted-foreground">"{round.targetWord}"</div>
+                    <div className="font-bold">라운드 {result.round}</div>
+                    <div className="text-sm text-muted-foreground">"{result.target}"</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-semibold text-primary">{round.player1Word || "-"}</div>
-                    <div className="text-lg font-bold">{round.player1Score || 0}점</div>
+                    <div className="font-semibold text-primary">{result.playerWord}</div>
+                    <div className="text-lg font-bold">{result.playerScore}점</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-semibold text-accent">{round.player2Word || "-"}</div>
-                    <div className="text-lg font-bold">{round.player2Score || 0}점</div>
+                    <div className="font-semibold text-accent">{result.botWord}</div>
+                    <div className="text-lg font-bold">{result.botScore}점</div>
                   </div>
                 </div>
               ))}

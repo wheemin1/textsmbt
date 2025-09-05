@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { StaticGameEngine } from "@/lib/staticGameEngine";
 
 interface UserStats {
   gamesPlayed: number;
@@ -56,13 +55,26 @@ export default function Home() {
 
   const handleBotGame = async (difficulty: string) => {
     try {
-      const gameState = await StaticGameEngine.startBotGame(difficulty as "easy" | "medium" | "hard");
+      // 간단한 게임 ID 생성
+      const gameId = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // 로컬 스토리지에 게임 상태 저장
+      const gameState = {
+        gameId,
+        difficulty,
+        opponent: `${difficulty.toUpperCase()} 봇`,
+        createdAt: new Date().toISOString()
+      };
+      
+      localStorage.setItem(`game_${gameId}`, JSON.stringify(gameState));
+      
       toast({
         title: "봇 게임 시작!",
         description: `${difficulty} 난이도 봇과의 게임이 시작됩니다.`,
         variant: "default",
       });
-      setLocation(`/game/${gameState.gameId}`);
+      
+      setLocation(`/game/${gameId}`);
     } catch (error: any) {
       toast({
         title: "게임 시작 실패",
