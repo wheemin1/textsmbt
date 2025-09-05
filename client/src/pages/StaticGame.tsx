@@ -77,6 +77,9 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
     }
 
     const gameInfo = JSON.parse(savedGame);
+    // 게임마다 랜덤하게 하나의 목표 단어 선택 (모든 라운드에서 동일)
+    const selectedTargetWord = TARGET_WORDS[Math.floor(Math.random() * TARGET_WORDS.length)];
+    
     const newGameState: SimpleGameState = {
       gameId: params.gameId,
       difficulty: gameInfo.difficulty,
@@ -87,7 +90,7 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
       status: "active",
       playerScore: 0,
       botScore: 0,
-      currentTarget: TARGET_WORDS[0],
+      currentTarget: selectedTargetWord, // 전체 게임에서 사용할 하나의 목표 단어
       roundResults: []
     };
 
@@ -150,19 +153,21 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
     };
 
     const newRoundResults = [...currentGameState.roundResults, roundResult];
-    const newPlayerScore = currentGameState.playerScore + roundResult.playerScore;
-    const newBotScore = currentGameState.botScore + roundResult.botScore;
+    
+    // 최고 점수 계산 (기존 최고점과 현재 라운드 점수 비교)
+    const newPlayerBest = Math.max(currentGameState.playerScore, roundResult.playerScore);
+    const newBotBest = Math.max(currentGameState.botScore, roundResult.botScore);
 
     if (currentGameState.currentRound >= currentGameState.maxRounds) {
-      // 게임 종료
-      const winner = newPlayerScore > newBotScore ? "player" : 
-                    newBotScore > newPlayerScore ? "bot" : "tie";
+      // 게임 종료 - 최고 점수로 승부 결정
+      const winner = newPlayerBest > newBotBest ? "player" : 
+                    newBotBest > newPlayerBest ? "bot" : "tie";
       
       setGameState({
         ...currentGameState,
         status: "completed",
-        playerScore: newPlayerScore,
-        botScore: newBotScore,
+        playerScore: newPlayerBest, // 최고 점수 저장
+        botScore: newBotBest, // 최고 점수 저장
         roundResults: newRoundResults
       });
 
@@ -170,32 +175,32 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
         if (winner === "player") {
           toast({
             title: "🎉 승리!",
-            description: `축하합니다! ${newPlayerScore}점으로 봇을 이겼습니다!`,
+            description: `축하합니다! 최고 점수 ${newPlayerBest}점으로 봇을 이겼습니다!`,
             variant: "default",
           });
         } else if (winner === "bot") {
           toast({
             title: "😅 패배",
-            description: `아쉽지만 봇이 ${newBotScore}점으로 이겼습니다.`,
+            description: `아쉽지만 봇이 최고 점수 ${newBotBest}점으로 이겼습니다.`,
             variant: "default",
           });
         } else {
           toast({
             title: "🤝 무승부",
-            description: `${newPlayerScore}점으로 박빙의 승부였습니다!`,
+            description: `최고 점수 ${newPlayerBest}점으로 박빙의 승부였습니다!`,
             variant: "default",
           });
         }
       }, 1000);
     } else {
-      // 다음 라운드
+      // 다음 라운드 - 동일한 목표 단어 유지, 최고 점수 업데이트
       setGameState({
         ...currentGameState,
         currentRound: currentGameState.currentRound + 1,
         timeRemaining: 15,
-        playerScore: newPlayerScore,
-        botScore: newBotScore,
-        currentTarget: TARGET_WORDS[currentGameState.currentRound],
+        playerScore: newPlayerBest, // 최고 점수로 업데이트
+        botScore: newBotBest, // 최고 점수로 업데이트
+        currentTarget: currentGameState.currentTarget, // 동일한 목표 단어 유지
         roundResults: newRoundResults
       });
 
@@ -248,14 +253,16 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
         <div className="flex justify-center items-center space-x-8">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary">{user?.nickname}</div>
-            <div className="text-lg text-primary">{gameState.playerScore}점</div>
+            <div className="text-sm text-muted-foreground">최고 점수</div>
+            <div className="text-lg text-primary font-bold">{gameState.playerScore}점</div>
           </div>
           <div className="text-center">
             <div className="text-lg text-muted-foreground">vs</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-accent">{gameState.opponent}</div>
-            <div className="text-lg text-accent">{gameState.botScore}점</div>
+            <div className="text-sm text-muted-foreground">최고 점수</div>
+            <div className="text-lg text-accent font-bold">{gameState.botScore}점</div>
           </div>
         </div>
       </div>
@@ -336,14 +343,16 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
               )}
             </div>
 
-            {/* Final Scores */}
+            {/* Final Scores - Best Scores */}
             <div className="grid md:grid-cols-2 gap-6">
               <div className="text-center p-4 bg-primary/10 rounded-lg">
                 <h3 className="font-bold text-primary mb-2">{user?.nickname}</h3>
+                <div className="text-sm text-muted-foreground mb-1">최고 점수</div>
                 <div className="text-2xl font-bold">{gameState.playerScore}점</div>
               </div>
               <div className="text-center p-4 bg-accent/10 rounded-lg">
                 <h3 className="font-bold text-accent mb-2">{gameState.opponent}</h3>
+                <div className="text-sm text-muted-foreground mb-1">최고 점수</div>
                 <div className="text-2xl font-bold">{gameState.botScore}점</div>
               </div>
             </div>
