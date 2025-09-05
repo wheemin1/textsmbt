@@ -1,16 +1,28 @@
 [build]
+  # Build settings
   publish = "client/dist"
-  command = "npm run build:client"
+  command = "npm install && npm run build:client"
+  
+  # Build environment
+  [build.environment]
+    NODE_VERSION = "18"
+    NODE_ENV = "production"
+    NPM_FLAGS = "--prefer-offline --no-audit"
 
-[build.environment]
-  NODE_VERSION = "18"
-  NODE_ENV = "production"
+# Build processing settings
+[build.processing]
+  skip_processing = false
+  
+[build.processing.css]
+  bundle = true
+  minify = true
+  
+[build.processing.js]
+  bundle = true
+  minify = true
 
-# Redirect API calls to Netlify Functions (not needed for static site)
-[[redirects]]
-  from = "/api/*"
-  to = "/api/:splat"
-  status = 404
+[build.processing.html]
+  pretty_urls = true
 
 # SPA fallback - redirect all other routes to index.html
 [[redirects]]
