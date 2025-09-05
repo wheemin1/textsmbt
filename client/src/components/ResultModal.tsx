@@ -61,6 +61,16 @@ export default function ResultModal({ gameState, isOpen, onClose }: ResultModalP
           <div className="bg-secondary/30 rounded-xl p-6 mb-6">
             <h3 className="text-lg font-semibold text-card-foreground mb-4 text-center">최종 점수</h3>
             
+            {/* 정답 표시 */}
+            {(gameState as any).debugInfo?.targetWord && (
+              <div className="mb-4 p-3 bg-primary/10 rounded-lg border border-primary/20 text-center">
+                <div className="text-sm text-muted-foreground mb-1">🎯 정답</div>
+                <div className="font-bold text-primary text-lg">
+                  {(gameState as any).debugInfo.targetWord}
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-3">
               {rounds.map((round: any, index: number) => (
                 <div key={index} className="flex justify-between items-center py-2 px-3 rounded-lg bg-background/30">

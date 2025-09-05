@@ -22,7 +22,7 @@ export function useGameState(gameId: string | null): GameStateHook {
   const { data: gameState, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/game-status', gameId],
     enabled: !!gameId,
-    refetchInterval: 1000, // Poll every second during active game
+    refetchInterval: 5000, // 5초마다 폴링 (1초에서 5초로 변경)
   });
 
   // WebSocket for real-time updates

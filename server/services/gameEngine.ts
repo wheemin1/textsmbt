@@ -2,6 +2,7 @@ import { type Game, type GameSubmission, type RoundData } from "@shared/schema";
 import { storage } from "../storage";
 import { word2vecService } from "./word2vec";
 import { botPlayer } from "./botPlayer";
+import { similarityStatsService } from "./similarityStats";
 
 interface RoundResult {
   gameId: string;
@@ -58,11 +59,19 @@ class GameEngine {
     // Calculate score using semantic similarity
     // TODO: In production, use target word for the day/round
     const targetWord = this.getTargetWord(gameId, game.currentRound);
-    const similarityResult = word2vecService.calculateSimilarity(word, targetWord);
+    const similarityResult = await word2vecService.calculateSimilarity(word, targetWord);
     const score = similarityResult.similarity;
 
+    console.log(`🎯 GameEngine: "${word}" vs "${targetWord}" = ${score}점 (similarityResult:`, similarityResult, `)`);
+    
+    // Validate score
+    if (typeof score !== 'number' || isNaN(score)) {
+      console.error(`❌ Invalid score: ${score} for word "${word}" vs "${targetWord}"`);
+      throw new Error("Failed to calculate similarity score");
+    }
+
     // Create submission
-    await storage.createSubmission({
+    const submission = await storage.createSubmission({
       gameId,
       userId,
       round: game.currentRound,
@@ -70,11 +79,34 @@ class GameEngine {
       score
     });
 
+    console.log(`💾 Created submission:`, submission);
+
     // Handle bot response if playing against bot
     if (game.isBot && game.player2Id === "bot") {
       setTimeout(async () => {
         await this.handleBotSubmission(gameId, game.currentRound, targetWord);
       }, Math.random() * 600 + 600); // 0.6-1.2s delay
+    }
+
+    // Check if someone got 100 points (perfect match) - immediate win
+    if (score >= 100) {
+      // Mark game as complete immediately
+      await storage.updateGame(gameId, {
+        status: "completed",
+        winnerId: userId
+      });
+
+      return {
+        gameId,
+        round: game.currentRound,
+        myScore: score,
+        opponentScore: 0,
+        myWord: word,
+        opponentWord: "",
+        roundComplete: true,
+        gameComplete: true,
+        winner: userId
+      };
     }
 
     // Check if round is complete
@@ -85,7 +117,7 @@ class GameEngine {
     }
 
     // Return partial result (waiting for opponent)
-    return {
+    const partialResult = {
       gameId,
       round: game.currentRound,
       myScore: score,
@@ -95,11 +127,14 @@ class GameEngine {
       roundComplete: false,
       gameComplete: false
     };
+    
+    console.log(`🎮 Returning partial result:`, partialResult);
+    return partialResult;
   }
 
   private async handleBotSubmission(gameId: string, round: number, targetWord: string): Promise<void> {
     const botWord = await botPlayer.selectWord(targetWord, "normal");
-    const similarityResult = word2vecService.calculateSimilarity(botWord, targetWord);
+    const similarityResult = await word2vecService.calculateSimilarity(botWord, targetWord);
     
     await storage.createSubmission({
       gameId,
@@ -108,6 +143,15 @@ class GameEngine {
       word: botWord,
       score: similarityResult.similarity
     });
+
+    // Check if bot got 100 points - immediate win
+    if (similarityResult.similarity >= 100) {
+      await storage.updateGame(gameId, {
+        status: "completed",
+        winnerId: "bot"
+      });
+      return;
+    }
 
     // Complete the round
     await this.completeRound(gameId, round);
@@ -177,18 +221,17 @@ class GameEngine {
   }
 
   private determineWinner(rounds: RoundData[], player1Id: string, player2Id: string): string | undefined {
-    const player1Scores = rounds.map(r => r.player1Score || 0);
-    const player2Scores = rounds.map(r => r.player2Score || 0);
+    // Calculate highest score for each player across all rounds
+    const player1HighestScore = rounds.reduce((max, round) => {
+      return Math.max(max, round.player1Score || 0);
+    }, 0);
     
-    // Sort scores to find best performances
-    const p1Sorted = [...player1Scores].sort((a, b) => b - a);
-    const p2Sorted = [...player2Scores].sort((a, b) => b - a);
+    const player2HighestScore = rounds.reduce((max, round) => {
+      return Math.max(max, round.player2Score || 0);
+    }, 0);
     
-    // Compare best scores first, then second best, etc.
-    for (let i = 0; i < 5; i++) {
-      if (p1Sorted[i] > p2Sorted[i]) return player1Id;
-      if (p2Sorted[i] > p1Sorted[i]) return player2Id;
-    }
+    if (player1HighestScore > player2HighestScore) return player1Id;
+    if (player2HighestScore > player1HighestScore) return player2Id;
     
     return undefined; // Tie
   }
@@ -247,12 +290,34 @@ class GameEngine {
 
   private getTargetWord(gameId: string, round: number): string {
     // TODO: Implement daily target word system like Semantle-ko
-    // For now, return a fixed target word per game+round
-    const words = ['가족', '학교', '음식', '친구', '사랑'];
-    return words[(gameId.length + round) % words.length];
+    // For now, return a fixed target word per game (not per round)
+    const words = ['가족', '학교', '음식', '친구', '사랑', '집', '시간', '마음', '행복', '꿈'];
+    return words[gameId.length % words.length];
+  }
+
+  // 개발 모드에서 목표 단어를 노출하는 공개 메서드
+  getTargetWordForDebug(gameId: string, round: number): string {
+    console.log(`🔍 Debug: gameId=${gameId}, round=${round}, NODE_ENV=${process.env.NODE_ENV}`);
+    if (process.env.NODE_ENV !== 'development') {
+      return 'Hidden in production';
+    }
+    const targetWord = this.getTargetWord(gameId, round);
+    console.log(`🔍 Debug: calculated targetWord="${targetWord}"`);
+    
+    // 유효한 단어인지 확인
+    if (!targetWord || targetWord === "없음" || targetWord.trim() === "") {
+      console.warn(`⚠️ Invalid target word: "${targetWord}", using fallback`);
+      return '시간'; // 기본 대체 단어
+    }
+    
+    return targetWord;
   }
 
   async createGame(player1Id: string, player2Id?: string, isBot: boolean = false): Promise<Game> {
+    // Pre-calculate target word for first round
+    const tempGameId = Math.random().toString(36);
+    const targetWord = this.getTargetWord(tempGameId, 1);
+    
     const game = await storage.createGame({
       player1Id,
       player2Id: isBot ? "bot" : player2Id,
@@ -260,11 +325,30 @@ class GameEngine {
       botDifficulty: isBot ? "normal" : undefined,
       status: "active",
       currentRound: 1,
-      rounds: []
+      rounds: [{
+        round: 1,
+        targetWord: targetWord,
+        submissions: [],
+        timeStarted: Date.now(),
+        timeEnded: null
+      }]
     });
 
     // Start first round timer
     this.startRoundTimer(game.id, 1);
+
+    // Pre-calculate similarity stats for the target word
+    // Use actual game.id for target word calculation
+    const actualTargetWord = this.getTargetWord(game.id, 1);
+    similarityStatsService.preCalculateStats(actualTargetWord).catch(error => {
+      console.warn(`Failed to pre-calculate stats for "${actualTargetWord}":`, error);
+    });
+
+    // Update the round with correct target word if needed
+    if (actualTargetWord !== targetWord) {
+      game.rounds[0].targetWord = actualTargetWord;
+      await storage.updateGame(game.id, { rounds: game.rounds });
+    }
 
     return game;
   }

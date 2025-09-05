@@ -122,3 +122,11 @@ export interface GameState {
   status: "waiting" | "active" | "completed";
   winnerId?: string;
 }
+
+export interface SimilarityStats {
+  targetWord: string;
+  maxSimilarity: number;
+  totalWords: number;
+  calculatedAt: Date;
+  message: string;
+}

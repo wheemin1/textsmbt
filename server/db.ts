@@ -6,9 +6,9 @@ import * as schema from "@shared/schema";
 neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  console.warn("⚠️ DATABASE_URL not set - using mock database for development");
+  // 로컬 개발용 임시 설정
+  process.env.DATABASE_URL = "postgresql://mock:mock@localhost:5432/mock";
 }
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });

@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { gameEngine } from "./services/gameEngine";
 import { word2vecService } from "./services/word2vec";
+import { similarityStatsService } from "./services/similarityStats";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 
@@ -327,6 +328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         opponent: {
           nickname: game.isBot ? "AI 봇" : "상대방", // TODO: Get actual opponent nickname
           type: game.isBot ? "bot" : "human"
+        },
+        debugInfo: {
+          targetWord: gameEngine.getTargetWordForDebug(gameId, game.currentRound)
         }
       });
     } catch (error) {
@@ -399,6 +403,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get user stats error:', error);
       res.status(500).json({ error: "SERVER_ERROR", message: "통계 조회 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Get similarity statistics for a game
+  app.get("/api/game/:gameId/stats", async (req, res) => {
+    try {
+      const { gameId } = req.params;
+      
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ error: "GAME_NOT_FOUND", message: "게임을 찾을 수 없습니다" });
+      }
+
+      // Get the target word for this game
+      const targetWord = gameEngine.getTargetWordForDebug(gameId, game.currentRound);
+      
+      if (!targetWord || targetWord === "Hidden in production") {
+        return res.status(403).json({ error: "STATS_UNAVAILABLE", message: "통계를 사용할 수 없습니다" });
+      }
+
+      // Get similarity statistics
+      const stats = await similarityStatsService.calculateStats(targetWord);
+      
+      res.json({
+        targetWord: stats.targetWord,
+        maxSimilarity: stats.maxSimilarity,
+        rank10Similarity: stats.rank10Similarity,
+        rank100Similarity: stats.rank100Similarity,
+        rank1000Similarity: stats.rank1000Similarity,
+        totalWords: stats.totalWords,
+        message: `정답 단어와 가장 유사한 단어의 유사도는 ${stats.maxSimilarity} 입니다.`,
+        details: [
+          `10번째로 유사한 단어의 유사도는 ${stats.rank10Similarity}이고`,
+          stats.rank100Similarity ? `100번째로 유사한 단어의 유사도는 ${stats.rank100Similarity}이고` : null,
+          stats.rank1000Similarity ? `1,000번째로 유사한 단어의 유사도는 ${stats.rank1000Similarity} 입니다.` : null
+        ].filter(Boolean).join(', ') + '.'
+      });
+    } catch (error) {
+      console.error('Get game stats error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "게임 통계 조회 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Get word rank for a specific word in a game
+  app.get("/api/game/:gameId/word/:word/rank", async (req, res) => {
+    try {
+      const { gameId, word } = req.params;
+      
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ error: "GAME_NOT_FOUND", message: "게임을 찾을 수 없습니다" });
+      }
+
+      const targetWord = gameEngine.getTargetWordForDebug(gameId, game.currentRound);
+      
+      if (!targetWord || targetWord === "Hidden in production") {
+        return res.status(403).json({ error: "STATS_UNAVAILABLE", message: "통계를 사용할 수 없습니다" });
+      }
+
+      // Get word rank
+      const rank = await similarityStatsService.getWordRank(targetWord, word);
+      
+      if (rank === null) {
+        return res.status(404).json({ error: "WORD_NOT_FOUND", message: "단어의 순위를 계산할 수 없습니다" });
+      }
+
+      res.json({
+        word,
+        targetWord,
+        rank,
+        message: `"${word}"는 "${targetWord}"와의 유사도 순위 ${rank}번째 입니다.`
+      });
+    } catch (error) {
+      console.error('Get word rank error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "단어 순위 조회 중 오류가 발생했습니다" });
+    }
+  });
+
+  // Test similarity calculation endpoint
+  app.get("/api/test/similarity/:targetWord/:testWord", async (req, res) => {
+    try {
+      const { targetWord, testWord } = req.params;
+      
+      console.log(`🧪 Testing similarity: "${testWord}" vs "${targetWord}"`);
+      
+      const similarityResult = await word2vecService.calculateSimilarity(testWord, targetWord);
+      // similarity는 이미 개선된 점수이므로 그대로 사용
+      const score = similarityResult.similarity * 100;
+      
+      console.log(`🧪 Result: "${testWord}" vs "${targetWord}" enhanced score=${similarityResult.similarity} → display=${score}`);
+
+      res.json({
+        targetWord,
+        testWord,
+        similarity: similarityResult.similarity,
+        score,
+        rank: similarityResult.rank || "N/A"
+      });
+    } catch (error) {
+      console.error('Test similarity error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "유사도 테스트 중 오류가 발생했습니다" });
     }
   });
 

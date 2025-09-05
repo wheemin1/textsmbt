@@ -16,7 +16,8 @@ class WebSocketManager {
     return new Promise((resolve, reject) => {
       try {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        const host = window.location.host || 'localhost:3000';
+        const wsUrl = `${protocol}//${host}/ws`;
         
         this.socket = new WebSocket(wsUrl);
 

@@ -306,4 +306,16 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// 로컬 개발 환경에서는 메모리 스토리지 사용
+const isLocalDevelopment = process.env.NODE_ENV === 'development' && !process.env.DATABASE_URL?.includes('neon');
+
+let storage: IStorage;
+
+if (isLocalDevelopment) {
+  console.warn("⚠️ Using memory storage for local development");
+  storage = new MemStorage();
+} else {
+  storage = new DatabaseStorage();
+}
+
+export { storage };

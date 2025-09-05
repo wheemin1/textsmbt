@@ -6,15 +6,32 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
 const hasGoogleAuth = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
+const isLocalDevelopment = process.env.NODE_ENV === 'development' && !process.env.DATABASE_URL?.includes('neon');
 
 const client = hasGoogleAuth ? new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID!,
   process.env.GOOGLE_CLIENT_SECRET!,
-  process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/auth/google/callback"
+  process.env.GOOGLE_REDIRECT_URI || "http://localhost:3000/auth/google/callback"
 ) : null;
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  
+  // 로컬 개발 환경에서는 메모리 세션 사용
+  if (isLocalDevelopment) {
+    console.warn("⚠️ Using memory session for local development");
+    return session({
+      secret: process.env.SESSION_SECRET || 'local-dev-secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: false, // 로컬에서는 HTTPS 없음
+        maxAge: sessionTtl,
+      },
+    });
+  }
+
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,

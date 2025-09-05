@@ -1,6 +1,6 @@
 import { apiRequest as makeApiRequest } from "./queryClient";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 export interface MatchResult {
   gameId?: string;

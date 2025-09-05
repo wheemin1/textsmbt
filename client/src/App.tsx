@@ -54,8 +54,8 @@ function App() {
                   <i className="fas fa-sword text-primary-foreground text-lg"></i>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground">한국어 텍스트 배틀</h1>
-                  <p className="text-xs text-muted-foreground">의미 유사도 경쟁 게임</p>
+                  <h1 className="text-xl font-bold text-foreground">단어 유사도 배틀 </h1>
+                  <p className="text-xs text-muted-foreground">꼬맨틀 Online 게임</p>
                 </div>
               </div>
               <AuthNavigation />

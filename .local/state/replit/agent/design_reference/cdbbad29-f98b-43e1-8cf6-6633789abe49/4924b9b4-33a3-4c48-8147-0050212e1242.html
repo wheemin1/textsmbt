@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국어 텍스트 배틀 - 의미 유사도 게임</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          borderRadius: {
+            lg: "var(--radius)",
+            md: "calc(var(--radius) - 2px)",
+            sm: "calc(var(--radius) - 4px)",
+          },
+          colors: {
+            background: "var(--background)",
+            foreground: "var(--foreground)",
+            card: {
+              DEFAULT: "var(--card)",
+              foreground: "var(--card-foreground)",
+            },
+            popover: {
+              DEFAULT: "var(--popover)",
+              foreground: "var(--popover-foreground)",
+            },
+            primary: {
+              DEFAULT: "var(--primary)",
+              foreground: "var(--primary-foreground)",
+            },
+            secondary: {
+              DEFAULT: "var(--secondary)",
+              foreground: "var(--secondary-foreground)",
+            },
+            muted: {
+              DEFAULT: "var(--muted)",
+              foreground: "var(--muted-foreground)",
+            },
+            accent: {
+              DEFAULT: "var(--accent)",
+              foreground: "var(--accent-foreground)",
+            },
+            destructive: {
+              DEFAULT: "var(--destructive)",
+              foreground: "var(--destructive-foreground)",
+            },
+            border: "var(--border)",
+            input: "var(--input)",
+            ring: "var(--ring)",
+            chart: {
+              "1": "var(--chart-1)",
+              "2": "var(--chart-2)",
+              "3": "var(--chart-3)",
+              "4": "var(--chart-4)",
+              "5": "var(--chart-5)",
+            }
+          },
+          fontFamily: {
+            sans: ["Noto Sans KR", "Inter", "var(--font-sans)"],
+            serif: ["var(--font-serif)"],
+            mono: ["var(--font-mono)"],
+          },
+          animation: {
+            'bounce-slow': 'bounce 3s infinite',
+            'pulse-fast': 'pulse 1s infinite',
+            'fade-in': 'fadeIn 0.5s ease-in-out',
+            'slide-up': 'slideUp 0.3s ease-out',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            slideUp: {
+              '0%': { transform: 'translateY(20px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            }
+          }
+        },
+      }
+    };
+    </script>
+    <style>
+        :root {
+            --background: hsl(236 25% 7%);
+            --foreground: hsl(210 40% 98%);
+            --card: hsl(236 25% 12%);
+            --card-foreground: hsl(210 40% 98%);
+            --popover: hsl(236 25% 12%);
+            --popover-foreground: hsl(210 40% 98%);
+            --primary: hsl(245 83% 68%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(236 25% 20%);
+            --secondary-foreground: hsl(210 40% 98%);
+            --muted: hsl(236 25% 15%);
+            --muted-foreground: hsl(215 20% 65%);
+            --accent: hsl(214 95% 58%);
+            --accent-foreground: hsl(210 40% 98%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(236 25% 20%);
+            --input: hsl(236 25% 15%);
+            --ring: hsl(245 83% 68%);
+            --chart-1: hsl(12 76% 61%);
+            --chart-2: hsl(173 58% 39%);
+            --chart-3: hsl(197 37% 24%);
+            --chart-4: hsl(43 74% 66%);
+            --chart-5: hsl(27 87% 67%);
+            --radius: 0.75rem;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, var(--background) 0%, hsl(236 25% 10%) 100%);
+            min-height: 100vh;
+        }
+        
+        .game-glow {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .round-dot-active {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        
+        .score-highlight {
+            background: linear-gradient(135deg, hsl(43 74% 66%), hsl(45 93% 55%));
+            color: hsl(45 100% 15%);
+        }
+    </style>
+</head>
+
+<body class="bg-background text-foreground min-h-screen">
+    <!-- @COMPONENT: App [main application container] -->
+    <div id="app" class="min-h-screen">
+        
+        <!-- Navigation Header -->
+        <!-- @COMPONENT: Header [persistent navigation] -->
+        <header class="bg-card border-b border-border">
+            <div class="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                        <i class="fas fa-sword text-primary-foreground text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-foreground">한국어 텍스트 배틀</h1>
+                        <p class="text-xs text-muted-foreground">의미 유사도 경쟁 게임</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
+                        <i class="fas fa-user"></i>
+                        <span data-bind="user.nickname">플레이어123</span>
+                    </div>
+                    <button class="w-10 h-10 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors">
+                        <i class="fas fa-cog text-secondary-foreground"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        <!-- @END_COMPONENT: Header -->
+        
+        <!-- Main Content Container -->
+        <main class="mx-auto max-w-4xl px-4 py-8 space-y-8">
+            
+            <!-- Home Page Section -->
+            <!-- @COMPONENT: HomePage [initial landing and matchmaking] -->
+            <section id="home-page" class="animate-fade-in">
+                
+                <!-- Hero Section -->
+                <div class="text-center space-y-6 mb-12">
+                    <!-- Hero background with Korean gaming aesthetics -->
+                    <div class="relative bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                        <h1 class="text-5xl md:text-7xl font-bold mb-4">텍스트 배틀</h1>
+                        <div class="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 blur-3xl -z-10"></div>
+                    </div>
+                    <p class="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                        단어의 의미 유사도로 승부하는 실시간 대전 게임<br>
+                        <span class="text-accent font-medium">5라운드 동안 가장 높은 점수를 획득하세요!</span>
+                    </p>
+                </div>
+
+                <!-- Quick Match Card -->
+                <div class="bg-card rounded-2xl shadow-lg p-8 game-glow mb-8">
+                    <div class="text-center space-y-6">
+                        <div class="flex justify-center">
+                            <div class="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
+                                <i class="fas fa-bolt text-2xl text-primary-foreground"></i>
+                            </div>
+                        </div>
+                        <h2 class="text-2xl font-bold text-card-foreground">빠른 매칭</h2>
+                        <p class="text-muted-foreground">실시간으로 다른 플레이어와 대전하거나 봇과 연습해보세요</p>
+                        
+                        <!-- Match Status Banner (hidden initially) -->
+                        <!-- @COMPONENT: MatchBanner [matchmaking status and controls] -->
+                        <div id="match-banner" class="hidden bg-accent/10 border border-accent rounded-xl p-6 space-y-4">
+                            <div class="flex items-center justify-center space-x-3">
+                                <div class="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
+                                <span class="text-accent font-medium" data-bind="matchStatus.message">매칭 중...</span>
+                                <span class="text-accent-foreground/60" data-bind="matchStatus.timer">(최대 12초)</span>
+                            </div>
+                            
+                            <!-- Soft timeout bot match button (shown after 6 seconds) -->
+                            <button id="start-bot-match" class="hidden w-full h-12 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium transition-colors" 
+                                    data-event="click:startBotMatch">
+                                지금 연습전 시작하기
+                            </button>
+                        </div>
+                        <!-- @END_COMPONENT: MatchBanner -->
+                        
+                        <!-- Primary Action Button -->
+                        <button id="quick-match-btn" class="w-full h-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary"
+                                data-event="click:joinMatchmaking"
+                                aria-label="빠른 매칭 시작">
+                            <i class="fas fa-play mr-2"></i>
+                            매칭 시작
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Additional Options -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-card rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center">
+                                <i class="fas fa-robot text-secondary-foreground"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-card-foreground">봇과 연습전</h3>
+                                <p class="text-sm text-muted-foreground">AI 상대와 실력을 향상시켜보세요</p>
+                            </div>
+                        </div>
+                        <button class="w-full h-10 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium transition-colors"
+                                data-event="click:startPracticeGame">
+                            연습 시작
+                        </button>
+                    </div>
+                    
+                    <div class="bg-card rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                                <i class="fas fa-users text-muted-foreground"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-card-foreground">친구 초대</h3>
+                                <p class="text-sm text-muted-foreground">링크로 친구와 대전하기</p>
+                            </div>
+                        </div>
+                        <button class="w-full h-10 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground font-medium transition-colors"
+                                data-implementation="Generate invite link functionality">
+                            초대 링크 생성
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <!-- @END_COMPONENT: HomePage -->
+
+            <!-- Game Page Section -->
+            <!-- @COMPONENT: GamePage [main battle interface] -->
+            <section id="game-page" class="hidden animate-slide-up">
+                
+                <!-- Game Header -->
+                <div class="bg-card rounded-xl shadow-lg p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-muted-foreground">라운드</span>
+                                <!-- @COMPONENT: RoundDots [round progress indicator] -->
+                                <div class="flex space-x-2" data-bind="game.currentRound">
+                                    <div class="w-3 h-3 bg-primary rounded-full round-dot-active"></div>
+                                    <div class="w-3 h-3 bg-primary/60 rounded-full"></div>
+                                    <div class="w-3 h-3 border-2 border-primary/40 rounded-full"></div>
+                                    <div class="w-3 h-3 border-2 border-primary/40 rounded-full"></div>
+                                    <div class="w-3 h-3 border-2 border-primary/40 rounded-full"></div>
+                                </div>
+                                <!-- @END_COMPONENT: RoundDots -->
+                            </div>
+                            <div class="h-6 w-px bg-border"></div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-muted-foreground">상대:</span>
+                                <span class="font-medium text-foreground" data-bind="game.opponent.nickname">플레이어456</span>
+                                <span class="text-xs bg-accent/20 text-accent px-2 py-1 rounded" data-bind="game.opponent.type">[사람]</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Timer -->
+                        <div class="flex items-center space-x-3">
+                            <div class="text-right">
+                                <div class="text-sm text-muted-foreground">남은 시간</div>
+                                <div class="text-2xl font-mono font-bold text-accent" data-bind="game.timeRemaining">00:15</div>
+                            </div>
+                            <div class="w-12 h-12 relative">
+                                <div class="w-full h-full border-4 border-accent/20 rounded-full"></div>
+                                <div class="absolute inset-0 w-full h-full border-4 border-accent rounded-full transform -rotate-90 border-transparent border-t-accent transition-transform duration-1000"
+                                     style="transform: rotate(45deg);" data-bind="game.timerProgress"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Word Input Section -->
+                <!-- @COMPONENT: WordInput [main input interface with autocomplete] -->
+                <div class="bg-card rounded-xl shadow-lg p-8 mb-6 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+                    <div class="relative z-10">
+                        <div class="text-center mb-8">
+                            <h2 class="text-2xl font-bold text-card-foreground mb-2">단어를 입력하세요</h2>
+                            <p class="text-muted-foreground">목표 단어와 가장 유사한 의미의 단어를 찾아보세요</p>
+                        </div>
+                        
+                        <div class="max-w-md mx-auto space-y-4">
+                            <div class="relative">
+                                <input type="text" id="word-input" 
+                                       class="w-full h-16 px-6 rounded-xl bg-input border-2 border-border focus:border-primary text-lg font-medium text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                       placeholder="단어를 입력하세요..."
+                                       data-bind="game.currentInput"
+                                       aria-label="단어 입력">
+                                
+                                <!-- Autocomplete Dropdown -->
+                                <div id="autocomplete-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto z-20">
+                                    <!-- @MAP: suggestions.map(suggestion => ( -->
+                                    <div class="px-4 py-3 hover:bg-accent/10 cursor-pointer border-b border-border last:border-b-0 transition-colors"
+                                         data-event="click:selectSuggestion">
+                                        <span class="text-popover-foreground">가족</span>
+                                    </div>
+                                    <div class="px-4 py-3 hover:bg-accent/10 cursor-pointer border-b border-border last:border-b-0 transition-colors">
+                                        <span class="text-popover-foreground">가정</span>
+                                    </div>
+                                    <div class="px-4 py-3 hover:bg-accent/10 cursor-pointer border-b border-border last:border-b-0 transition-colors">
+                                        <span class="text-popover-foreground">집안</span>
+                                    </div>
+                                    <!-- @END_MAP )) -->
+                                </div>
+                            </div>
+                            
+                            <button id="submit-word" 
+                                    class="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-semibold transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary"
+                                    data-event="click:submitWord"
+                                    data-implementation="Should validate word before submission">
+                                <i class="fas fa-check mr-2"></i>
+                                제출하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: WordInput -->
+
+                <!-- Round History and Scores -->
+                <!-- @COMPONENT: ScoreBoard [displays round-by-round results] -->
+                <div class="bg-card rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-card-foreground mb-4">라운드 기록</h3>
+                    
+                    <div class="space-y-3">
+                        <!-- @MAP: rounds.map((round, index) => ( -->
+                        <div class="grid grid-cols-12 gap-4 items-center py-3 px-4 rounded-lg bg-secondary/30">
+                            <div class="col-span-2 flex items-center space-x-2">
+                                <span class="text-sm font-medium text-muted-foreground">라운드 1</span>
+                                <i class="fas fa-crown text-yellow-400 text-sm" data-mock="true" title="최고점"></i>
+                            </div>
+                            <div class="col-span-5">
+                                <div class="text-sm text-muted-foreground">내 점수</div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-semibold text-foreground" data-bind="round.myScore">94점</span>
+                                    <span class="text-xs text-muted-foreground" data-bind="round.myWord">(가족)</span>
+                                </div>
+                            </div>
+                            <div class="col-span-5">
+                                <div class="text-sm text-muted-foreground">상대 점수</div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-semibold text-foreground" data-bind="round.opponentScore">87점</span>
+                                    <span class="text-xs text-muted-foreground" data-bind="round.opponentWord">(집안)</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-12 gap-4 items-center py-3 px-4 rounded-lg bg-secondary/20">
+                            <div class="col-span-2">
+                                <span class="text-sm font-medium text-muted-foreground">라운드 2</span>
+                            </div>
+                            <div class="col-span-5">
+                                <div class="text-sm text-muted-foreground">내 점수</div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-semibold text-foreground" data-bind="round.myScore">76점</span>
+                                    <span class="text-xs text-muted-foreground" data-bind="round.myWord">(학교)</span>
+                                </div>
+                            </div>
+                            <div class="col-span-5">
+                                <div class="text-sm text-muted-foreground">상대 점수</div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-semibold text-foreground" data-bind="round.opponentScore">82점</span>
+                                    <span class="text-xs text-muted-foreground" data-bind="round.opponentWord">(교육)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-4 items-center py-3 px-4 rounded-lg bg-muted/30">
+                            <div class="col-span-2">
+                                <span class="text-sm font-medium text-muted-foreground">라운드 3</span>
+                            </div>
+                            <div class="col-span-10 text-center">
+                                <span class="text-muted-foreground text-sm">진행 중...</span>
+                            </div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                    
+                    <!-- Current Totals -->
+                    <div class="mt-6 pt-4 border-t border-border">
+                        <div class="flex justify-between items-center">
+                            <div class="text-center">
+                                <div class="text-sm text-muted-foreground">내 최고점</div>
+                                <div class="text-xl font-bold text-primary" data-bind="game.myBestScore">94점</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-sm text-muted-foreground">상대 최고점</div>
+                                <div class="text-xl font-bold text-accent" data-bind="game.opponentBestScore">87점</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: ScoreBoard -->
+            </section>
+            <!-- @END_COMPONENT: GamePage -->
+
+            <!-- Onboarding Page -->
+            <!-- @COMPONENT: OnboardingPage [nickname setup] -->
+            <section id="onboarding-page" class="hidden animate-fade-in">
+                <div class="max-w-md mx-auto">
+                    <div class="bg-card rounded-2xl shadow-lg p-8 text-center space-y-6">
+                        <div class="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center mx-auto">
+                            <i class="fas fa-user-plus text-2xl text-primary-foreground"></i>
+                        </div>
+                        
+                        <div>
+                            <h2 class="text-2xl font-bold text-card-foreground mb-2">게임에 오신 것을 환영합니다!</h2>
+                            <p class="text-muted-foreground">플레이하기 전에 닉네임을 설정해주세요</p>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <input type="text" id="nickname-input" 
+                                   class="w-full h-14 px-4 rounded-xl bg-input border-2 border-border focus:border-primary text-center text-lg font-medium text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                   placeholder="닉네임을 입력하세요"
+                                   maxlength="10"
+                                   data-bind="user.nickname">
+                            
+                            <button id="start-game" 
+                                    class="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-semibold transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary"
+                                    data-event="click:saveNicknameAndStart"
+                                    data-implementation="Save to localStorage and proceed to home">
+                                시작하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- @END_COMPONENT: OnboardingPage -->
+        </main>
+
+        <!-- Result Modal -->
+        <!-- @COMPONENT: ResultModal [game completion results] -->
+        <div id="result-modal" class="hidden fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-card rounded-2xl shadow-2xl max-w-lg w-full p-8 animate-slide-up">
+                
+                <!-- Victory/Defeat Header -->
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
+                        <i class="fas fa-trophy text-3xl text-primary-foreground" data-bind="result.icon"></i>
+                    </div>
+                    <h2 class="text-3xl font-bold text-card-foreground mb-2" data-bind="result.title">승리!</h2>
+                    <p class="text-muted-foreground" data-bind="result.subtitle">축하합니다! 상대방을 이겼습니다</p>
+                </div>
+                
+                <!-- Final Scores -->
+                <div class="bg-secondary/30 rounded-xl p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-card-foreground mb-4 text-center">최종 점수</h3>
+                    
+                    <div class="space-y-3">
+                        <!-- @MAP: finalScores.map((score, index) => ( -->
+                        <div class="flex justify-between items-center py-2 px-3 rounded-lg bg-background/30">
+                            <span class="text-sm text-muted-foreground">라운드 1</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="score-highlight px-3 py-1 rounded-full text-sm font-semibold">94점</span>
+                                <span class="text-muted-foreground">vs</span>
+                                <span class="bg-muted px-3 py-1 rounded-full text-sm font-semibold">87점</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center py-2 px-3 rounded-lg bg-background/30">
+                            <span class="text-sm text-muted-foreground">라운드 2</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="bg-muted px-3 py-1 rounded-full text-sm font-semibold">76점</span>
+                                <span class="text-muted-foreground">vs</span>
+                                <span class="score-highlight px-3 py-1 rounded-full text-sm font-semibold">82점</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center py-2 px-3 rounded-lg bg-background/30">
+                            <span class="text-sm text-muted-foreground">라운드 3</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="score-highlight px-3 py-1 rounded-full text-sm font-semibold">88점</span>
+                                <span class="text-muted-foreground">vs</span>
+                                <span class="bg-muted px-3 py-1 rounded-full text-sm font-semibold">71점</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center py-2 px-3 rounded-lg bg-background/30">
+                            <span class="text-sm text-muted-foreground">라운드 4</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="bg-muted px-3 py-1 rounded-full text-sm font-semibold">65점</span>
+                                <span class="text-muted-foreground">vs</span>
+                                <span class="score-highlight px-3 py-1 rounded-full text-sm font-semibold">79점</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center py-2 px-3 rounded-lg bg-background/30">
+                            <span class="text-sm text-muted-foreground">라운드 5</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="score-highlight px-3 py-1 rounded-full text-sm font-semibold">91점</span>
+                                <span class="text-muted-foreground">vs</span>
+                                <span class="bg-muted px-3 py-1 rounded-full text-sm font-semibold">68점</span>
+                            </div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                    
+                    <!-- Total Score -->
+                    <div class="mt-4 pt-4 border-t border-border">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-card-foreground">최종 합계</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-xl font-bold text-primary" data-bind="result.myTotal">414점</span>
+                                <span class="text-muted-foreground">vs</span>
+                                <span class="text-xl font-bold text-muted-foreground" data-bind="result.opponentTotal">387점</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button class="h-12 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium transition-colors"
+                            data-event="click:returnHome"
+                            data-implementation="Return to home page">
+                        홈으로
+                    </button>
+                    <button class="h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
+                            data-event="click:playAgain"
+                            data-implementation="Start new matchmaking">
+                        다시 대전
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ResultModal -->
+
+        <!-- Additional Game States -->
+        
+        <!-- Waiting for Round Results -->
+        <!-- @COMPONENT: RoundResultsWaiting [shown between round submission and results] -->
+        <div id="waiting-results" class="hidden fixed inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-40">
+            <div class="bg-card rounded-xl shadow-xl p-8 text-center max-w-sm">
+                <div class="w-16 h-16 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <h3 class="text-xl font-semibold text-card-foreground mb-2">결과 집계 중...</h3>
+                <p class="text-muted-foreground">상대방의 제출을 기다리고 있습니다</p>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: RoundResultsWaiting -->
+
+        <!-- Round Results Reveal -->
+        <!-- @COMPONENT: RoundResults [simultaneous score reveal] -->
+        <div id="round-results" class="hidden fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-card rounded-2xl shadow-2xl max-w-md w-full p-8 animate-slide-up">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-card-foreground mb-1">라운드 1 결과</h2>
+                    <p class="text-muted-foreground">동시 공개!</p>
+                </div>
+                
+                <div class="space-y-4 mb-6">
+                    <div class="bg-primary/10 border border-primary/30 rounded-xl p-4">
+                        <div class="text-center">
+                            <div class="text-sm text-muted-foreground">내 제출</div>
+                            <div class="text-lg font-semibold text-foreground" data-bind="roundResult.myWord">가족</div>
+                            <div class="text-2xl font-bold text-primary" data-bind="roundResult.myScore">94점</div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <span class="text-muted-foreground font-medium">VS</span>
+                    </div>
+                    
+                    <div class="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                        <div class="text-center">
+                            <div class="text-sm text-muted-foreground">상대 제출</div>
+                            <div class="text-lg font-semibold text-foreground" data-bind="roundResult.opponentWord">집안</div>
+                            <div class="text-2xl font-bold text-accent" data-bind="roundResult.opponentScore">87점</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center space-x-2 bg-primary/20 text-primary px-4 py-2 rounded-full">
+                        <i class="fas fa-trophy"></i>
+                        <span class="font-semibold" data-bind="roundResult.winner">라운드 승리!</span>
+                    </div>
+                </div>
+                
+                <button class="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors"
+                        data-event="click:continueToNextRound"
+                        data-implementation="Proceed to next round or show final results">
+                    다음 라운드
+                </button>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: RoundResults -->
+    </div>
+    <!-- @END_COMPONENT: App -->
+
+    <!-- Game Statistics Sidebar (Desktop Only) -->
+    <!-- @COMPONENT: StatsSidebar [persistent statistics display] -->
+    <aside class="hidden xl:block fixed right-4 top-1/2 transform -translate-y-1/2 w-64">
+        <div class="bg-card/80 backdrop-blur-sm rounded-xl shadow-lg p-6 space-y-4">
+            <h3 class="text-lg font-semibold text-card-foreground border-b border-border pb-2">게임 통계</h3>
+            
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">총 게임</span>
+                    <span class="font-semibold text-foreground" data-bind="stats.totalGames">23</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">승률</span>
+                    <span class="font-semibold text-primary" data-bind="stats.winRate">67%</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">평균 점수</span>
+                    <span class="font-semibold text-foreground" data-bind="stats.avgScore">82.4점</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">연승 기록</span>
+                    <span class="font-semibold text-accent" data-bind="stats.winStreak">5경기</span>
+                </div>
+            </div>
+            
+            <div class="pt-3 border-t border-border">
+                <div class="text-xs text-muted-foreground text-center">
+                    Powered by FastText Korean Embeddings
+                </div>
+            </div>
+        </div>
+    </aside>
+    <!-- @END_COMPONENT: StatsSidebar -->
+
+    <!-- Toast Notifications -->
+    <!-- @COMPONENT: ToastContainer [system notifications] -->
+    <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50 max-w-sm">
+        <!-- @MAP: toasts.map(toast => ( -->
+        <div class="hidden bg-card border-l-4 border-l-primary rounded-lg shadow-lg p-4 animate-slide-up" data-toast="success">
+            <div class="flex items-start space-x-3">
+                <div class="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="fas fa-check text-primary-foreground text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="font-medium text-card-foreground">매칭 성공</h4>
+                    <p class="text-sm text-muted-foreground">상대방을 찾았습니다. 게임을 시작합니다!</p>
+                </div>
+                <button class="text-muted-foreground hover:text-foreground transition-colors">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="hidden bg-card border-l-4 border-l-destructive rounded-lg shadow-lg p-4 animate-slide-up" data-toast="error">
+            <div class="flex items-start space-x-3">
+                <div class="w-6 h-6 bg-destructive rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="fas fa-exclamation text-destructive-foreground text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="font-medium text-card-foreground">오류 발생</h4>
+                    <p class="text-sm text-muted-foreground">네트워크 연결을 확인해주세요.</p>
+                </div>
+                <button class="text-muted-foreground hover:text-foreground transition-colors">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+        </div>
+        <!-- @END_MAP )) -->
+    </div>
+    <!-- @END_COMPONENT: ToastContainer -->
+
+    <script>
+        // @STATE: currentPage:'home'|'onboarding'|'game' = 'onboarding'
+        // @STATE: gameState = { round: 1, timeLeft: 15, myScore: 0, opponentScore: 0 }
+        // @STATE: matchmaking = { active: false, timeElapsed: 0, canStartBot: false }
+        
+        (function() {
+            'use strict';
+            
+            // Initialize page state management
+            let currentPage = localStorage.getItem('userNickname') ? 'home' : 'onboarding';
+            let gameState = {
+                currentRound: 1,
+                timeRemaining: 15,
+                myBestScore: 0,
+                opponentBestScore: 0,
+                rounds: []
+            };
+            
+            // Page navigation
+            function showPage(page) {
+                document.querySelectorAll('section').forEach(section => {
+                    section.classList.add('hidden');
+                });
+                document.getElementById(`${page}-page`).classList.remove('hidden');
+                currentPage = page;
+            }
+            
+            // Initialize based on user state
+            if (currentPage === 'onboarding') {
+                showPage('onboarding');
+                document.getElementById('nickname-input').focus();
+            } else {
+                showPage('home');
+                // Load nickname from localStorage
+                const nickname = localStorage.getItem('userNickname');
+                if (nickname) {
+                    document.querySelector('[data-bind="user.nickname"]').textContent = nickname;
+                }
+            }
+            
+            // Onboarding handlers
+            document.getElementById('start-game')?.addEventListener('click', function() {
+                const nickname = document.getElementById('nickname-input').value.trim();
+                if (nickname.length < 2) {
+                    // TODO: Show validation error
+                    return;
+                }
+                localStorage.setItem('userNickname', nickname);
+                document.querySelector('[data-bind="user.nickname"]').textContent = nickname;
+                showPage('home');
+            });
+            
+            // Matchmaking handlers
+            let matchmakingTimer = null;
+            let matchmakingSeconds = 0;
+            
+            document.getElementById('quick-match-btn')?.addEventListener('click', function() {
+                // TODO: Implement API call to /api/queue/join
+                startMatchmaking();
+            });
+            
+            function startMatchmaking() {
+                const banner = document.getElementById('match-banner');
+                const button = document.getElementById('quick-match-btn');
+                const botButton = document.getElementById('start-bot-match');
+                
+                banner.classList.remove('hidden');
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i>매칭 중...';
+                
+                matchmakingSeconds = 0;
+                matchmakingTimer = setInterval(function() {
+                    matchmakingSeconds++;
+                    
+                    // Update countdown display
+                    const remaining = 12 - matchmakingSeconds;
+                    document.querySelector('[data-bind="matchStatus.timer"]').textContent = `(${remaining}초 남음)`;
+                    
+                    // Show bot match option after 6 seconds (WAIT_SOFT)
+                    if (matchmakingSeconds >= 6) {
+                        botButton.classList.remove('hidden');
+                        document.querySelector('[data-bind="matchStatus.message"]').textContent = '상대를 찾는 중...';
+                    }
+                    
+                    // Auto-start bot match after 12 seconds (WAIT_HARD)
+                    if (matchmakingSeconds >= 12) {
+                        clearInterval(matchmakingTimer);
+                        startBotMatch();
+                    }
+                }, 1000);
+            }
+            
+            document.getElementById('start-bot-match')?.addEventListener('click', function() {
+                if (matchmakingTimer) {
+                    clearInterval(matchmakingTimer);
+                }
+                startBotMatch();
+            });
+            
+            function startBotMatch() {
+                // TODO: Implement API call to start bot game
+                // Update opponent display to show bot
+                document.querySelector('[data-bind="game.opponent.nickname"]').textContent = 'AI 봇';
+                document.querySelector('[data-bind="game.opponent.type"]').textContent = '[봇]';
+                document.querySelector('[data-bind="game.opponent.type"]').classList.remove('bg-accent/20', 'text-accent');
+                document.querySelector('[data-bind="game.opponent.type"]').classList.add('bg-secondary', 'text-secondary-foreground');
+                
+                showPage('game');
+                startGameTimer();
+                
+                // Show success toast
+                showToast('success', '봇 매칭 성공', 'AI 봇과의 대전이 시작됩니다!');
+            }
+            
+            // Game Timer
+            let gameTimer = null;
+            let timeLeft = 15;
+            
+            function startGameTimer() {
+                timeLeft = 15;
+                updateTimerDisplay();
+                
+                gameTimer = setInterval(function() {
+                    timeLeft--;
+                    updateTimerDisplay();
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(gameTimer);
+                        // TODO: Handle round timeout
+                        handleRoundTimeout();
+                    }
+                }, 1000);
+            }
+            
+            function updateTimerDisplay() {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.querySelector('[data-bind="game.timeRemaining"]').textContent = display;
+                
+                // Update circular progress (approximate)
+                const progress = ((15 - timeLeft) / 15) * 360;
+                const progressRing = document.querySelector('[data-bind="game.timerProgress"]');
+                if (progressRing) {
+                    progressRing.style.transform = `rotate(${progress - 90}deg)`;
+                }
+                
+                // Change color when time is running out
+                if (timeLeft <= 5) {
+                    document.querySelector('[data-bind="game.timeRemaining"]').classList.add('text-destructive');
+                } else {
+                    document.querySelector('[data-bind="game.timeRemaining"]').classList.remove('text-destructive');
+                }
+            }
+            
+            function handleRoundTimeout() {
+                // TODO: Submit empty word or handle timeout
+                showWaitingResults();
+            }
+            
+            // Word input and submission
+            document.getElementById('word-input')?.addEventListener('input', function(e) {
+                const value = e.target.value.trim();
+                // TODO: Implement autocomplete search
+                if (value.length >= 1) {
+                    showAutocomplete(value);
+                } else {
+                    hideAutocomplete();
+                }
+            });
+            
+            document.getElementById('submit-word')?.addEventListener('click', function() {
+                const word = document.getElementById('word-input').value.trim();
+                if (!word) return;
+                
+                // TODO: Implement API call to /api/game/submit
+                submitWord(word);
+            });
+            
+            function showAutocomplete(query) {
+                // TODO: Filter word list and show suggestions
+                document.getElementById('autocomplete-dropdown').classList.remove('hidden');
+            }
+            
+            function hideAutocomplete() {
+                document.getElementById('autocomplete-dropdown').classList.add('hidden');
+            }
+            
+            function submitWord(word) {
+                // Disable input and button
+                document.getElementById('word-input').disabled = true;
+                document.getElementById('submit-word').disabled = true;
+                document.getElementById('submit-word').innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i>제출됨';
+                
+                // Clear timer
+                if (gameTimer) {
+                    clearInterval(gameTimer);
+                }
+                
+                // TODO: API call to submit word and get results
+                // For demo, simulate waiting period
+                setTimeout(showWaitingResults, 500);
+                
+                // Simulate bot delay and round completion
+                setTimeout(showRoundResults, 2000);
+            }
+            
+            function showWaitingResults() {
+                document.getElementById('waiting-results').classList.remove('hidden');
+            }
+            
+            function showRoundResults() {
+                document.getElementById('waiting-results').classList.add('hidden');
+                document.getElementById('round-results').classList.remove('hidden');
+                
+                // TODO: Populate with actual round results
+            }
+            
+            // Continue to next round
+            document.querySelector('[data-event="click:continueToNextRound"]')?.addEventListener('click', function() {
+                document.getElementById('round-results').classList.add('hidden');
+                
+                // Check if game is complete
+                if (gameState.currentRound >= 5) {
+                    showFinalResults();
+                } else {
+                    // Prepare next round
+                    gameState.currentRound++;
+                    resetRoundUI();
+                    startGameTimer();
+                }
+            });
+            
+            function resetRoundUI() {
+                // Re-enable input
+                document.getElementById('word-input').disabled = false;
+                document.getElementById('word-input').value = '';
+                document.getElementById('submit-word').disabled = false;
+                document.getElementById('submit-word').innerHTML = '<i class="fas fa-check mr-2"></i>제출하기';
+                
+                // TODO: Update round indicator dots
+                updateRoundDots();
+            }
+            
+            function updateRoundDots() {
+                // TODO: Update visual round progress indicators
+                console.log(`Round ${gameState.currentRound} started`);
+            }
+            
+            function showFinalResults() {
+                // TODO: Calculate final scores and show result modal
+                document.getElementById('result-modal').classList.remove('hidden');
+            }
+            
+            // Result modal handlers
+            document.querySelector('[data-event="click:returnHome"]')?.addEventListener('click', function() {
+                document.getElementById('result-modal').classList.add('hidden');
+                resetGameState();
+                showPage('home');
+            });
+            
+            document.querySelector('[data-event="click:playAgain"]')?.addEventListener('click', function() {
+                document.getElementById('result-modal').classList.add('hidden');
+                resetGameState();
+                startMatchmaking();
+            });
+            
+            function resetGameState() {
+                gameState = {
+                    currentRound: 1,
+                    timeRemaining: 15,
+                    myBestScore: 0,
+                    opponentBestScore: 0,
+                    rounds: []
+                };
+                
+                // Reset match banner
+                const banner = document.getElementById('match-banner');
+                const button = document.getElementById('quick-match-btn');
+                banner.classList.add('hidden');
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-play mr-2"></i>매칭 시작';
+            }
+            
+            // Toast notification system
+            function showToast(type, title, message) {
+                const container = document.getElementById('toast-container');
+                const toast = document.querySelector(`[data-toast="${type}"]`).cloneNode(true);
+                toast.classList.remove('hidden');
+                toast.querySelector('h4').textContent = title;
+                toast.querySelector('p').textContent = message;
+                
+                container.appendChild(toast);
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    toast.style.transform = 'translateX(100%)';
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 5000);
+                
+                // Close button
+                toast.querySelector('button').addEventListener('click', () => {
+                    toast.remove();
+                });
+            }
+            
+            // Autocomplete selection
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('#autocomplete-dropdown')) {
+                    const word = e.target.textContent.trim();
+                    if (word) {
+                        document.getElementById('word-input').value = word;
+                        hideAutocomplete();
+                    }
+                }
+            });
+            
+            // Close autocomplete when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('#word-input') && !e.target.closest('#autocomplete-dropdown')) {
+                    hideAutocomplete();
+                }
+            });
+            
+            // Handle Enter key in word input
+            document.getElementById('word-input')?.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.isComposing) {
+                    e.preventDefault();
+                    document.getElementById('submit-word').click();
+                }
+            });
+            
+            // Practice game handler
+            document.querySelector('[data-event="click:startPracticeGame"]')?.addEventListener('click', function() {
+                // Immediately start bot game without matchmaking
+                startBotMatch();
+            });
+            
+            // Initialize nickname display if available
+            const savedNickname = localStorage.getItem('userNickname');
+            if (savedNickname) {
+                document.querySelectorAll('[data-bind="user.nickname"]').forEach(el => {
+                    el.textContent = savedNickname;
+                });
+            }
+        })();
+    </script>
+
+    <!-- @FUNCTIONALITY: Integration points for real implementation -->
+    <!-- 
+    TODO: Integrate with Semantle-ko repository logic:
+    1. Use word2vec.py similarity calculations for scoring
+    2. Integrate Korean word validation from filter_words.py
+    3. Implement FastText Korean embeddings loading
+    4. Use process_similar.py for pre-calculated similarity rankings
+    
+    TODO: Supabase Integration:
+    1. Real-time matchmaking with Supabase Realtime
+    2. User authentication and profiles
+    3. Game state synchronization across players
+    4. Persistent game history and statistics
+    5. WebSocket connections for live updates
+    
+    TODO: API Implementation:
+    1. /api/queue/join - Join matchmaking queue
+    2. /api/game/submit - Submit word for current round
+    3. /api/game-status/{id} - Get current game state
+    4. /api/health - Health check endpoint
+    
+    TODO: Korean Word Processing:
+    1. Load Korean word dictionary from Semantle-ko
+    2. Implement semantic similarity scoring using FastText
+    3. Add word validation and filtering
+    4. Autocomplete functionality with Korean word suggestions
+    -->
+</body>
+</html>
