@@ -1,4 +1,4 @@
-import { word2vecService } from "./word2vec";
+import { word2vec } from "./word2vecDB";
 
 type BotDifficulty = "easy" | "normal" | "hard";
 
@@ -31,14 +31,16 @@ class BotPlayer {
     
     // For development, select a word that would score in target range
     const candidates = this.getWordCandidates();
-    const scoredCandidates = candidates.map(word => {
+    const scoredCandidates = [];
+    
+    for (const word of candidates) {
       try {
-        const result = word2vecService.calculateSimilarity(word, targetWord);
-        return { word, score: result.similarity };
+        const result = await word2vec.calculateSimilarity(word, targetWord);
+        scoredCandidates.push({ word, score: result });
       } catch {
-        return { word, score: 0 };
+        scoredCandidates.push({ word, score: 0 });
       }
-    });
+    }
 
     // Filter by target score range
     const [minScore, maxScore] = strategy.targetScoreRange;

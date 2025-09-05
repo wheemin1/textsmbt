@@ -1,6 +1,6 @@
 import { type Game, type GameSubmission, type RoundData } from "@shared/schema";
 import { storage } from "../storage";
-import { word2vecService } from "./word2vec";
+import { word2vec } from "./word2vecDB"; // Use new VectorDB service
 import { botPlayer } from "./botPlayer";
 import { similarityStatsService } from "./similarityStats";
 
@@ -30,7 +30,7 @@ class GameEngine {
     }
 
     // Validate word
-    if (!word2vecService.isValidWord(word)) {
+    if (!(await word2vec.isValidWord(word))) {
       throw new Error("Invalid word");
     }
 
@@ -59,7 +59,7 @@ class GameEngine {
     // Calculate score using semantic similarity
     // TODO: In production, use target word for the day/round
     const targetWord = this.getTargetWord(gameId, game.currentRound);
-    const similarityResult = await word2vecService.calculateSimilarity(word, targetWord);
+    const similarityResult = await word2vec.calculateSimilarity(word, targetWord);
     const score = similarityResult.similarity;
 
     console.log(`🎯 GameEngine: "${word}" vs "${targetWord}" = ${score}점 (similarityResult:`, similarityResult, `)`);
@@ -134,18 +134,18 @@ class GameEngine {
 
   private async handleBotSubmission(gameId: string, round: number, targetWord: string): Promise<void> {
     const botWord = await botPlayer.selectWord(targetWord, "normal");
-    const similarityResult = await word2vecService.calculateSimilarity(botWord, targetWord);
+    const similarityResult = await word2vec.calculateSimilarity(botWord, targetWord);
     
     await storage.createSubmission({
       gameId,
       userId: "bot",
       round,
       word: botWord,
-      score: similarityResult.similarity
+      score: similarityResult
     });
 
     // Check if bot got 100 points - immediate win
-    if (similarityResult.similarity >= 100) {
+    if (similarityResult >= 100) {
       await storage.updateGame(gameId, {
         status: "completed",
         winnerId: "bot"

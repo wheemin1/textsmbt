@@ -7,12 +7,11 @@ import path from 'path';
 import readline from 'readline';
 
 const FASTTEXT_FILE = path.join(process.cwd(), 'data', 'fasttext', 'cc.ko.300.vec');
-const KOREAN_WORDS_FILE = path.join(process.cwd(), 'data', 'korean_words.txt');
-const FREQUENT_WORDS_FILE = path.join(process.cwd(), 'data', 'korean_frequent_words.txt');
+const LARGE_KOREAN_WORDS_FILE = path.join(process.cwd(), 'data', 'korean_words_large.txt');
 const DB_PATH = path.join(process.cwd(), 'data', 'vectors.db');
 
-// Direct VectorDB implementation for initialization
-class InitVectorDB {
+// Direct VectorDB implementation for large-scale initialization
+class LargeVectorDB {
   constructor() {
     this.db = null;
   }
@@ -29,9 +28,12 @@ class InitVectorDB {
       driver: sqlite3.Database
     });
 
+    // Drop existing table and recreate
+    await this.db.exec(`DROP TABLE IF EXISTS word_vectors`);
+    
     // 벡터 저장 테이블 생성
     await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS word_vectors (
+      CREATE TABLE word_vectors (
         word TEXT PRIMARY KEY,
         vector BLOB NOT NULL,
         frequency INTEGER DEFAULT 0,
@@ -41,13 +43,13 @@ class InitVectorDB {
 
     // 인덱스 생성 (빠른 검색용)
     await this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_word_frequency ON word_vectors(frequency DESC);
+      CREATE INDEX idx_word_frequency ON word_vectors(frequency DESC);
     `);
 
-    console.log('✅ VectorDB initialized successfully');
+    console.log('✅ Large VectorDB initialized successfully');
   }
 
-  async loadFastTextVectors(vecFilePath, targetWords) {
+  async loadLargeKoreanWords(vecFilePath, targetWords) {
     if (!this.db) throw new Error('Database not initialized');
 
     const fileStream = fs.createReadStream(vecFilePath);
@@ -55,10 +57,12 @@ class InitVectorDB {
 
     let lineCount = 0;
     let insertedCount = 0;
-    const batchSize = 1000;
+    const batchSize = 2000;
     let batch = [];
+    const targetWordsSet = new Set(targetWords); // 빠른 검색을 위한 Set
 
-    console.log('📥 Loading FastText vectors into database...');
+    console.log('📥 Loading large Korean FastText vectors...');
+    console.log(`🎯 Target words: ${targetWords.length}`);
 
     for await (const line of rl) {
       if (lineCount === 0) {
@@ -72,8 +76,8 @@ class InitVectorDB {
       // 한국어 단어만 필터링
       if (!this.isKoreanWord(word)) continue;
       
-      // 특정 단어 리스트가 있으면 해당 단어만 로딩
-      if (targetWords && !targetWords.includes(word)) continue;
+      // 대용량 타겟 단어 리스트 확인
+      if (!targetWordsSet.has(word)) continue;
 
       const vector = parts.slice(1).map(x => parseFloat(x));
       if (vector.length !== 300) continue; // FastText는 300차원
@@ -87,7 +91,7 @@ class InitVectorDB {
         await this.insertBatch(batch);
         insertedCount += batch.length;
         batch = [];
-        console.log(`📊 Inserted ${insertedCount} vectors...`);
+        console.log(`📊 Inserted ${insertedCount} vectors... (${(insertedCount/targetWords.length*100).toFixed(1)}%)`);
       }
 
       lineCount++;
@@ -150,94 +154,72 @@ class InitVectorDB {
   }
 }
 
-const FASTTEXT_FILE = path.join(process.cwd(), 'cc.ko.300.vec');
-const KOREAN_WORDS_FILE = path.join(process.cwd(), 'data', 'korean_words.txt');
-const FREQUENT_WORDS_FILE = path.join(process.cwd(), 'data', 'korean_frequent_words.txt');
-
-async function initializeDatabase() {
-  console.log('🚀 Starting VectorDB initialization...');
+async function initializeLargeDatabase() {
+  console.log('🚀 Starting LARGE VectorDB initialization...');
+  
+  const vectorDB = new LargeVectorDB();
   
   try {
     // 1. 데이터베이스 초기화
     await vectorDB.initialize();
     console.log('✅ Database initialized');
 
-    // 2. 한국어 단어 리스트 로드
+    // 2. 대용량 한국어 단어 리스트 로드 (10,000개)
     let targetWords = [];
     
-    // 게임용 핵심 단어들 로드
-    if (fs.existsSync(FREQUENT_WORDS_FILE)) {
-      const frequentWords = fs.readFileSync(FREQUENT_WORDS_FILE, 'utf-8')
+    if (fs.existsSync(LARGE_KOREAN_WORDS_FILE)) {
+      const largeWords = fs.readFileSync(LARGE_KOREAN_WORDS_FILE, 'utf-8')
         .split('\n')
         .map(line => line.trim())
         .filter(word => word.length > 0);
-      targetWords = [...targetWords, ...frequentWords];
-      console.log(`📝 Loaded ${frequentWords.length} frequent words`);
-    }
-
-    // 전체 사전 단어들 (우선순위 낮음)
-    if (fs.existsSync(KOREAN_WORDS_FILE)) {
-      const allWords = fs.readFileSync(KOREAN_WORDS_FILE, 'utf-8')
-        .split('\n')
-        .map(line => line.trim())
-        .filter(word => word.length > 0);
-      
-      // 중복 제거
-      const uniqueWords = [...new Set([...targetWords, ...allWords])];
-      targetWords = uniqueWords;
-      console.log(`📚 Total unique words: ${targetWords.length}`);
+      targetWords = largeWords;
+      console.log(`📚 Loaded ${targetWords.length} large Korean words`);
+    } else {
+      console.log('❌ Large Korean words file not found');
+      process.exit(1);
     }
 
     // 3. FastText 벡터 파일이 있는지 확인
     if (!fs.existsSync(FASTTEXT_FILE)) {
-      console.log('⚠️  FastText file not found. Please download cc.ko.300.vec');
-      console.log('💡 You can download it from: https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.ko.300.vec.gz');
-      
-      // 압축 해제 안내
-      if (fs.existsSync(FASTTEXT_FILE + '.gz')) {
-        console.log('📦 Found compressed file. Extracting...');
-        const { execSync } = await import('child_process');
-        try {
-          execSync(`gzip -d "${FASTTEXT_FILE}.gz"`);
-          console.log('✅ FastText file extracted');
-        } catch (error) {
-          console.error('❌ Failed to extract file:', error);
-          process.exit(1);
-        }
-      } else {
-        console.log('❌ No FastText file found. Please download it first.');
-        process.exit(1);
-      }
+      console.log('⚠️  FastText file not found at:', FASTTEXT_FILE);
+      console.log('💡 Run: npm run setup:fasttext first');
+      process.exit(1);
     }
 
     // 4. 벡터 데이터를 DB에 로드
-    console.log('📥 Loading FastText vectors into database...');
-    console.log(`🎯 Target words: ${targetWords.length}`);
-    console.log('⏳ This may take several minutes...');
+    console.log('📥 Loading LARGE FastText vectors into database...');
+    console.log('⏳ This may take 10-15 minutes for 10,000 words...');
     
-    await vectorDB.loadFastTextVectors(FASTTEXT_FILE, targetWords);
+    const insertedCount = await vectorDB.loadLargeKoreanWords(FASTTEXT_FILE, targetWords);
     
     // 5. 테스트 쿼리 실행
     console.log('🧪 Running test queries...');
     
-    const testWords = ['자연', '나무', '산', '바다', '사람'];
+    const testWords = ['자연', '나무', '산', '바다', '사람', '음식', '학교', '사랑', '행복'];
     for (const word of testWords) {
       const vector = await vectorDB.getWordVector(word);
       if (vector) {
         console.log(`✅ ${word}: vector loaded (${vector.length} dimensions)`);
         
-        // 유사도 테스트
+        // 다른 단어와의 유사도 테스트
         if (word !== '자연') {
-          const similarity = await vectorDB.calculateSimilarity('자연', word);
-          console.log(`   🔗 Similarity to '자연': ${similarity.toFixed(2)}`);
+          const vector1 = await vectorDB.getWordVector('자연');
+          if (vector1) {
+            const similarity = cosineSimilarity(vector1, vector);
+            const score = Math.min(100, Math.max(0, (similarity + 0.15) * 120));
+            console.log(`   🔗 Similarity to '자연': ${score.toFixed(2)}`);
+          }
         }
       } else {
         console.log(`❌ ${word}: vector not found`);
       }
     }
 
-    console.log('✅ VectorDB initialization completed successfully!');
-    console.log('🎮 You can now use the database-based similarity calculation');
+    console.log('✅ LARGE VectorDB initialization completed successfully!');
+    console.log('🎮 You now have access to a massive Korean word database');
+    console.log(`📊 Database location: ${DB_PATH}`);
+    console.log(`📦 Total vectors: ${insertedCount}`);
+    console.log(`🚀 Coverage: ${(insertedCount/targetWords.length*100).toFixed(1)}%`);
 
   } catch (error) {
     console.error('❌ Error during initialization:', error);
@@ -247,9 +229,24 @@ async function initializeDatabase() {
   }
 }
 
-// CLI 실행 감지
-if (import.meta.url === `file://${process.argv[1]}`) {
-  initializeDatabase().catch(console.error);
+function cosineSimilarity(vec1, vec2) {
+  if (vec1.length !== vec2.length) return 0;
+
+  let dotProduct = 0;
+  let norm1 = 0;
+  let norm2 = 0;
+
+  for (let i = 0; i < vec1.length; i++) {
+    dotProduct += vec1[i] * vec2[i];
+    norm1 += vec1[i] * vec1[i];
+    norm2 += vec2[i] * vec2[i];
+  }
+
+  const magnitude = Math.sqrt(norm1) * Math.sqrt(norm2);
+  if (magnitude === 0) return 0;
+
+  return dotProduct / magnitude;
 }
 
-export { initializeDatabase };
+// CLI 실행
+initializeLargeDatabase().catch(console.error);

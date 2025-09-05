@@ -199,6 +199,13 @@ export class VectorDB {
       .slice(0, limit);
   }
 
+  async getVectorCount(): Promise<number> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const result = await this.db.get('SELECT COUNT(*) as count FROM word_vectors');
+    return result?.count || 0;
+  }
+
   async close(): Promise<void> {
     if (this.db) {
       await this.db.close();

@@ -56,18 +56,6 @@ class Word2VecService {
     }
   }
       
-      // 봇 단어들 - 게임에서 봇이 사용하는 단어들
-      const BOT_WORDS = [
-        "우주", "세상", "마음", "인생", "세계", "사람", "나라", "지구", "미래", "과거",
-        "현실", "꿈", "소망", "목표", "계획", "준비", "시작", "완성", "성취", "발전",
-        "창조", "발견", "탐구", "연구", "학습", "지식", "지혜", "이해", "깨달음", "성찰"
-      ];
-
-      const fastTextPath = path.join(process.cwd(), 'data', 'fasttext', 'cc.ko.300.vec');
-      
-      // 핵심: 모든 게임 관련 단어들을 미리 로드
-      const allGameWords = [...TARGET_WORDS, ...BOT_WORDS];
-      
       console.log(`🎯 Loading ${allGameWords.length} game words from FastText...`);
       await directFastText.loadVectors(fastTextPath, allGameWords);
       

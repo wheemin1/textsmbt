@@ -287,7 +287,7 @@ class Word2VecService {
     return this.getFallbackSimilarWords(targetWord, limit);
   }
 
-  private getFallbackSimilarWords(targetWord: string, limit: number): string[] {
+  public getFallbackSimilarWords(targetWord: string, limit: number): string[] {
     const candidates: Array<{word: string, similarity: number}> = [];
     
     // 자주 사용되는 단어들 중에서 유사도 계산
@@ -309,11 +309,15 @@ class Word2VecService {
   }
 
   // 현재 사용 중인 벡터 시스템 정보
-  getSystemInfo(): { type: string; hasRealVectors: boolean; wordsCount: number } {
+  async getSystemInfo(): Promise<{ type: string; hasRealVectors: boolean; wordsCount: number }> {
+    const wordsCount = this.useVectorDB 
+      ? await vectorDB.getVectorCount()
+      : this.frequentWords.length;
+
     return {
       type: this.useVectorDB ? 'VectorDB' : 'Fallback',
       hasRealVectors: this.useVectorDB,
-      wordsCount: this.frequentWords.length
+      wordsCount
     };
   }
 }

@@ -3,8 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { gameEngine } from "./services/gameEngine";
-import { word2vecService } from "./services/word2vec";
-import { word2vec as vectorBasedWord2Vec } from "./services/word2vecDB"; // New VectorDB service
+import { word2vec } from "./services/word2vecDB"; // New VectorDB service only
 import { vectorDB } from "./services/vectorDB"; // Direct VectorDB access
 import { similarityStatsService } from "./services/similarityStats";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -70,11 +69,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Health check
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", async (req, res) => {
     res.json({ 
       ok: true, 
       serverTime: new Date().toISOString(),
-      wordsLoaded: word2vecService.isValidWord("가족")
+      wordsLoaded: await word2vec.isValidWord("가족")
     });
   });
 
@@ -343,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // VectorDB 시스템 상태 확인
   app.get("/api/vectordb/status", async (req, res) => {
     try {
-      const systemInfo = vectorBasedWord2Vec.getSystemInfo();
+      const systemInfo = await word2vec.getSystemInfo();
       
       res.json({
         ...systemInfo,
@@ -376,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const directSimilarity = await vectorDB.calculateSimilarity(word1, word2);
       
       // 기존 시스템과 비교
-      const fallbackSimilarity = await vectorBasedWord2Vec.calculateSimilarity(word1, word2);
+      const fallbackSimilarity = await word2vec.calculateSimilarity(word1, word2);
       
       // 단어 벡터 존재 여부 확인
       const word1Vector = await vectorDB.getWordVector(word1);
@@ -408,12 +407,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // VectorDB에서 유사 단어 조회
-      const similarWords = await vectorBasedWord2Vec.getSimilarWords(word, limit);
+      const similarWords = await word2vec.getSimilarWords(word, limit);
       
       // 각 단어의 정확한 유사도 계산
       const wordsWithScores = [];
       for (const similarWord of similarWords) {
-        const similarity = await vectorBasedWord2Vec.calculateSimilarity(word, similarWord);
+        const similarity = await word2vec.calculateSimilarity(word, similarWord);
         wordsWithScores.push({
           word: similarWord,
           similarity: Math.round(similarity),
@@ -425,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetWord: word,
         similarWords: wordsWithScores,
         totalFound: wordsWithScores.length,
-        method: vectorBasedWord2Vec.getSystemInfo().hasRealVectors ? "VectorDB" : "패턴 매칭"
+        method: word2vec.getSystemInfo().hasRealVectors ? "VectorDB" : "패턴 매칭"
       });
     } catch (error) {
       console.error('Get similar words error:', error);
@@ -443,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const vector = await vectorDB.getWordVector(word);
-      const isValid = await vectorBasedWord2Vec.isValidWord(word);
+      const isValid = await word2vec.isValidWord(word);
       
       res.json({
         word,
@@ -465,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const query = (q as string) || "";
       const maxResults = Math.min(parseInt(limit as string) || 8, 20);
       
-      const suggestions = word2vecService.getSuggestions(query, maxResults);
+      const suggestions = word2vec.getFallbackSimilarWords(query, maxResults);
       res.json({ suggestions });
     } catch (error) {
       console.error('Word suggestions error:', error);
@@ -474,7 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Validate word endpoint
-  app.post("/api/words/validate", (req, res) => {
+  app.post("/api/words/validate", async (req, res) => {
     try {
       const { word } = req.body;
       
@@ -482,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "MISSING_WORD", message: "단어를 입력해주세요" });
       }
 
-      const isValid = word2vecService.isValidWord(word);
+      const isValid = await word2vec.isValidWord(word);
       res.json({ 
         isValid,
         word,
@@ -609,7 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "MISSING_WORDS", message: "두 단어를 모두 입력해주세요" });
       }
 
-      const result = await word2vecService.calculateSimilarity(word1, word2);
+      const result = await word2vec.calculateSimilarity(word1, word2);
       
       res.json({
         word1,
