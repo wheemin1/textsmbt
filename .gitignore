@@ -55,4 +55,4 @@ data/fasttext/cc.ko.300.vec
 replit.nix
 server/public
 vite.config.ts.*
-*.tar.gz
+*.tar.gzcc.ko.300.vec.gz
