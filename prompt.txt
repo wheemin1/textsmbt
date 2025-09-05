@@ -1,62 +1,116 @@
 # SemantleKo 프로젝트 현황 및 개발 진행상황
 
-## 🚀 현재 상태 (2025-09-05) - GitHub 연동 및 Netlify 배포
+## 🚀 현재 상태 (2025-09-05) - 봇 게임 완성 및 실제 유사도 계산 구현
 
-### 🔄 진행중인 배포 작업
+### ✅ 최근 완성된 주요 기능들
 
-#### **GitHub Repository 연동 완료**
+#### **1. 로그인 리다이렉트 문제 해결** ✅
+- `Landing.tsx`: `/lobby` → `/` 리다이렉트 수정
+- `App.tsx`: 다중 라우트 지원 (`/home`, `/lobby` → `Home`)  
+- `useAuth.ts`: localStorage 이벤트 동기화 추가
+- **결과**: 로그인 후 홈으로 정상 이동
+
+#### **2. GitHub 연동 및 Netlify 배포** ✅
 - ✅ Repository: `https://github.com/wheemin1/textsmbt.git`
-- ✅ FastText 대용량 파일 Git 히스토리에서 완전 제거 (219MB → GitHub 100MB 제한)
-- ✅ `.gitignore` 업데이트: `data/fasttext/` 폴더 제외
-- ✅ 모든 프로젝트 파일 성공적으로 push 완료
+- ✅ FastText 대용량 파일 Git 히스토리 완전 제거
+- ✅ Netlify 자동 배포 성공
+- ✅ StaticGameEngine 의존성 제거로 빌드 오류 해결
+- **결과**: 안정적인 정적 사이트 배포
 
-#### **Netlify 자동 배포 설정 진행중**
-- ✅ **netlify.toml** 설정 파일 생성
-- ✅ **package-client.json** 클라이언트 전용 의존성 분리
-- ✅ **Node.js 버전** 20.18.0 설정 (`.nvmrc`)
-- 🔄 **현재 이슈**: Vite 설정 파일 호환성 문제
+#### **3. 봇 대전 게임 완전 구현** ✅
+- ✅ Home.tsx: 인라인 봇 게임 생성 로직
+- ✅ StaticGame.tsx: 5라운드 완전 게임플레이
+- ✅ 난이도별 봇 AI (쉬움/보통/어려움)
+- ✅ 실시간 15초 타이머
+- ✅ 승리 조건: **5라운드 중 최고 점수**로 승부 결정
+- **결과**: 완전히 작동하는 봇 게임 시스템
 
-#### **현재 배포 에러 상황**
+#### **4. 실제 FastText 유사도 계산 구현** ❌ (실패)
+- ✅ 서버 API: `/api/words/similarity` 엔드포인트 추가
+- ✅ word2vecService와 FastText 벡터 기반 계산
+- ✅ 클라이언트: async/await으로 실제 유사도 호출
+- ❌ **문제**: Netlify 정적 배포에서 서버 API 호출 불가
+- ❌ **현재 상태**: 여전히 fallback 계산 사용 (임의 데이터)
+
+### ⚠️ 유사도 로직 개선 실패 이유
+
+#### **기술적 제약사항**
+1. **Netlify 정적 호스팅**: 서버 API 없음
+2. **FastText 파일 크기**: 2GB 파일 브라우저에서 로드 불가
+3. **CORS 이슈**: 로컬 서버와 배포 환경 차이
+
+#### **현재 사용 중인 Fallback 계산**
+```javascript
+const calculateFallbackSimilarity = (word1: string, word2: string): number => {
+  if (word1 === word2) return 100;
+  
+  // 글자 포함 여부로 간단한 유사도 계산
+  let score = 0;
+  for (let char of word1) {
+    if (word2.includes(char)) score += 15;
+  }
+  
+  // 길이 유사성  
+  const lengthSimilarity = Math.max(0, 15 - Math.abs(word1.length - word2.length) * 3);
+  
+  return Math.min(80, score + lengthSimilarity + Math.random() * 10);
+};
 ```
-❌ Error: Cannot find package 'vite' imported from vite.config.ts
-❌ Build failed: Command failed with exit code 1
-```
 
-**문제 분석:**
-- `vite.config.ts`가 Replit 전용 플러그인들을 import 시도
-- `package-client.json`에는 Replit 관련 의존성 없음
-- Netlify 빌드 환경에서 호환되지 않는 Vite 설정
+#### **해결 방안**
+1. **Netlify Functions**: Serverless API로 유사도 계산
+2. **External API**: 별도 서버에 FastText 서비스 배포
+3. **Pre-computed**: 자주 사용되는 단어 쌍 미리 계산
+4. **WebAssembly**: 브라우저에서 FastText 실행
 
-**해결 방안 (Next Steps):**
-1. Netlify 전용 `vite.config.netlify.ts` 생성 필요
-2. 또는 빌드 스크립트에서 설정 파일 교체
-3. Replit 플러그인 없는 순수 React+Vite 설정 적용
+### 🎮 현재 게임 시스템 구조
+
+#### **봇 게임 플로우**
+1. **홈페이지**: "봇 대전" 버튼 클릭
+2. **난이도 선택**: 쉬움(EASY 봇) / 보통(MEDIUM 봇) / 어려움(HARD 봇)
+3. **게임 생성**: localStorage 기반 게임 상태 저장
+4. **5라운드 진행**: 
+   - 동일한 목표 단어 (예: "자연") 사용
+   - 각 라운드 15초 제한시간
+   - **임시 fallback 유사도 계산** (개선 필요)
+5. **승부 결정**: 5라운드 중 **가장 높은 점수**로 승리 판정
+
+#### **봇 AI 시스템**
+- **쉬움**: 최대 60-80점 제한
+- **보통**: 최대 75-90점 제한  
+- **어려움**: 최대 85-95점 제한
+- **봇 단어 풀**: 각 난이도별 최적화된 단어 선택
+
+### 🏗️ 기술 스택 및 아키텍처
+
+#### **프론트엔드**
+- **React 18** + **TypeScript** + **Vite**
+- **Tailwind CSS** + **shadcn/ui** 컴포넌트
+- **Wouter** 라우팅 + **localStorage** 상태관리
+- **임시 fallback 유사도 계산** (개선 필요)
+
+#### **백엔드 (로컬 개발만)**
+- **Express.js** + **TypeScript** + **tsx**
+- **FastText** 한국어 임베딩 (2M 단어, 300차원)
+- **DirectFastText** 온디맨드 벡터 로딩
+- **word2vecService** 코사인 유사도 계산
+
+#### **배포 시스템**
+- **GitHub**: 소스 코드 관리
+- **Netlify**: 정적 사이트 자동 배포
+- **제한사항**: 서버 API 없음, FastText 데이터 없음
 
 ### 📋 배포 설정 파일들
 
 #### **netlify.toml** (Netlify 배포 설정)
 ```toml
 [build]
-  command = "cp package-client.json package.json && npm install --legacy-peer-deps && npx vite build"
-  publish = "client/dist"
+  command = "npx vite build"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20.18.0"
   NODE_ENV = "production"
-  NPM_FLAGS = "--legacy-peer-deps"
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-
-[[headers]]  
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
 
 [[redirects]]
   from = "/*"
@@ -64,419 +118,216 @@
   status = 200
 ```
 
-#### **package-client.json** (클라이언트 전용 의존성)
-- 서버 의존성 제거 (express, ws, drizzle-orm 등)
-- Replit 플러그인 제거 (@replit/vite-plugin)
-- 순수 React+Vite+TypeScript 스택만 유지
-- tailwindcss 3.4.15로 다운그레이드 (호환성)
+#### **package-client.json** (정적 배포용)
+- 서버 의존성 완전 제거
+- React + Vite 핵심만 유지
+- Netlify 빌드 최적화
 
-#### **배포 플로우**
-1. `package-client.json` → `package.json` 복사
-2. `npm install --legacy-peer-deps` 의존성 설치  
-3. `npx vite build` 정적 사이트 빌드
-4. `client/dist` 폴더를 Netlify에 배포
+### 🎯 현재 완성된 게임 기능
 
-### 🔧 기술적 도전과제
+#### **인증 시스템** ✅
+- 닉네임 기반 간단 로그인
+- localStorage 세션 관리
+- 자동 리다이렉트 및 로그인 상태 유지
 
-#### **Vite 설정 파일 충돌**
-- **문제**: `vite.config.ts`가 Replit 플러그인 import
-- **현재 코드**: `import { replit } from "@replit/vite-plugin"`
-- **해결 필요**: Netlify 호환 버전 생성
+#### **봇 게임 시스템** ⚠️ (부분 완성)
+- ✅ 5라운드 턴제 게임플레이
+- ✅ 실시간 타이머 (15초)
+- ❌ **임시 유사도 계산** (실제 FastText 아님)
+- ✅ 최고 점수 승부 시스템
+- ✅ 라운드별 결과 히스토리
 
-#### **의존성 버전 호환성**  
-- ✅ Node.js 18.17.0 → 20.18.0 업그레이드 완료
-- ✅ tailwindcss 3.5.0 → 3.4.15 다운그레이드 완료
-- ✅ --legacy-peer-deps 플래그 적용
-
-### 📅 배포 진행 타임라인
-
-#### **Phase 1: GitHub Repository 연동** ✅
-- Repository 생성 및 원격 등록
-- FastText 파일 히스토리 정리 (`git filter-branch`)
-- 전체 프로젝트 코드 push 완료
-
-#### **Phase 2: Netlify 배포 설정** ✅  
-- 자동 배포 연동 설정
-- 빌드 설정 파일들 생성
-- Node.js 환경 최적화
-
-#### **Phase 3: 빌드 문제 해결** 🔄 (현재 단계)
-- Vite 설정 호환성 문제 해결 중
-- 다음 시도: 순수 Vite 설정 파일 생성
-
-#### **Git Commit History (최근)**
-```
-31c9776 - Simplify build process to fix vite not found error
-8b891c4 - Update build script with Vite installation verification  
-2a8b72c - Update Netlify configuration for build optimization
-fbd5252 - Add Netlify deployment configuration
-```
-
-### 🎯 배포 전략
-
-#### **Static Site 최적화**
-- ✅ 서버 코드 완전 분리
-- ✅ 클라이언트 전용 의존성만 설치
-- ✅ 정적 자산 빌드 (`client/dist`)
-- ⚠️ WebSocket/실시간 기능은 배포 시 비활성화
-
-#### **FastText 데이터 처리**  
-- ✅ 로컬 개발: 2GB 파일 사용
-- ✅ 배포 버전: Mock 데이터 또는 API 호출로 대체
-- 🔄 향후: CDN 또는 별도 서비스로 분리 예정
-
-### 🐛 현재 배포 에러 상세 분석
-
-#### **Netlify Build Log (2025-09-05 10:41 AM)**
-```
-❌ failed to load config from /opt/build/repo/vite.config.ts
-❌ Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from vite.config.ts
-❌ Command failed with exit code 1: npx vite build
-```
-
-#### **에러 분석**
-1. **npx vite build** 성공적으로 vite@6.3.5 설치함
-2. **npm install** 완료: 43 packages audited, 0 vulnerabilities
-3. **vite.config.ts 로딩 실패**: 설정 파일에서 'vite' 패키지 import 실패
-4. **근본 원인**: `package-client.json`에 `vite` 및 Replit 플러그인 누락
-
-#### **현재 vite.config.ts 문제점**
-```typescript
-// 현재 설정 (Replit 의존)
-import { defineConfig } from "vite"
-import { replit } from "@replit/vite-plugin"  // ❌ package-client.json에 없음
-import react from "@vitejs/plugin-react"
-```
-
-#### **해결 방안 우선순위**
-1. **🥇 즉시 해결**: Netlify 전용 vite.config 생성
-2. **🥈 중기 계획**: 조건부 플러그인 로딩
-3. **🥉 장기 계획**: 환경별 설정 파일 분리
-
-### ✅ 최근 완료된 작업들
-
-#### 1. **FastText 한국어 임베딩 통합 완료**
-- ✅ **cc.ko.300.vec** 파일 (2GB) 다운로드 및 설정
-- ✅ **DirectFastText 서비스** 구현으로 실제 Word2Vec 계산
-- ✅ **온디맨드 벡터 로딩**: 메모리 효율성 극대화
-- ✅ **코사인 유사도 계산**: 실제 의미 분석 기반 점수
-- **결과**: 실제 한국어 의미 유사도 기반 게임 플레이 실현
-
-#### 2. **게임 UI/UX 대폭 개선**
-- ✅ **꼬맨틀 스타일 통계 표시**: 버튼 클릭 없이 즉시 확인
-- ✅ **현재 점수 실시간 표시**: 게임 상단에 크게 표시
-- ✅ **정답 단어 표시**: 게임 중/종료 시 모두 확인 가능
-- ✅ **단순화된 통계**: "정답 단어와 가장 유사한 단어의 유사도는 XX.XX 입니다"
-- **결과**: 사용자 체험 크게 향상, 꼬맨틀과 유사한 직관적 인터페이스
-
-#### 3. **성능 최적화 완료**
-- ✅ **통계 계산 속도 개선**: 복잡한 계산 제거
-- ✅ **캐시 시스템**: 중복 계산 방지
-- ✅ **메모리 효율성**: 필요한 벡터만 로딩
-- **결과**: "너무 오래걸려" 문제 해결, 즉시 응답
-
-#### 4. **WebSocket 연결 안정화**
-- ✅ **localhost:undefined 에러 해결**
-- ✅ **실시간 게임 상태 동기화** 정상 작동
-- ✅ **서버-클라이언트 통신** 안정화
-- **결과**: 실시간 멀티플레이어 게임 완전 구현
-
-### 📊 기술적 성과
-
-#### **FastText 통합 현황**
-```
-📊 FastText: 2000000 words, 300 dimensions
-🎯 Loaded "시간": [-0.1054, 0.3550, -0.1483, 0.1722, -0.0530...] (raw FastText)
-🎯 DirectFastText (on-demand): "사과" vs "시간" cosine=0.182128 → score=18
-✅ Loaded 19/21 target words
-🚀 DirectFastText enabled with key words
-🚀 Word2Vec service initialized with 970 Korean words
-```
-
-#### **게임 플레이 실제 데이터**
-- 실제 단어 유사도 계산: "식당" vs "시간" = 42점 (cosine=0.420895)
-- 의미적 연관성 반영: "수업" vs "시간" = 42점 (cosine=0.424754)  
-- 정답 발견: "시간" vs "시간" = 100점 (정답!)
-
-### 🎮 현재 게임 상태
-- ✅ **서버 실행**: localhost:3000에서 안정적 구동
-- ✅ **실시간 플레이**: WebSocket 기반 멀티플레이어
-- ✅ **AI 봇 대전**: 봇 플레이어와 연습 가능
-- ✅ **통계 시스템**: 실시간 유사도 분석 표시
-- ✅ **점수 시스템**: FastText 기반 정확한 채점
-
----
-
-## Phase 1 업그레이드 완료 (2025-01-15)
-
-### 🎯 Semantle-Ko 오픈소스 통합 - 1단계 완료
-
-#### ✅ 한국어 단어 데이터베이스 대폭 확장
-- **기존**: 150개 기본 단어 목록
-- **업그레이드**: 970개 한국어 고빈도 단어 (NewsJelly/semantle-ko 기반)
-- **파일**: `data/korean_frequent_words.txt` 생성
-- **효과**: 게임 다양성 및 난이도 크게 개선
-
-#### ✅ 한국어 유사도 계산 로직 정교화
-- **Semantic Groups**: 16개 의미 카테고리로 단어 분류
-  - 가족관계, 교육, 음식, 감정, 장소, 시간, 자연, 교통, 색상, 날씨, 동물, 스포츠, 직업, 기술, 건강, 예술
-- **계층적 유사도**: 같은 카테고리 내 단어들 0.7-0.95 유사도
-- **형태소 유사도**: 한국어 특성 반영한 글자 레벨 분석
-- **효과**: 더 정확하고 직관적인 단어 유사도 제공
-
-#### ✅ 파일 기반 단어 관리 시스템
-- 외부 텍스트 파일에서 동적 단어 로딩
-- 주석과 빈 줄 필터링
-- Fallback 시스템으로 안정성 확보
-- 개발자 친화적 단어 목록 관리
-
-#### 💡 기술적 성과
-- ✅ 서버 시작시 "✅ Loaded 970 Korean frequent words from file" 확인
-- ✅ Word2Vec 서비스 초기화 완료
-- ✅ localhost:3000 정상 동작
-- ✅ 메모리 기반 개발 환경 안정화
-
----
-
-## 프로젝트 개요
-한국어 텍스트 배틀 게임 - 실시간 멀티플레이어 한국어 단어 유사도 배틀 게임
-플레이어들이 주어진 단어와 의미적으로 유사한 단어를 제출하여 점수를 경쟁
-
-## 아키텍처
-- **Full-Stack TypeScript 애플리케이션**
-- **프론트엔드**: React 18 + Vite
-- **백엔드**: Node.js + Express.js
-- **실시간 통신**: WebSocket
-- **데이터베이스**: PostgreSQL + Drizzle ORM
-- **인증**: Replit Auth 시스템
-
-## Replit → 로컬 환경 변경사항
-
-### 1. 패키지 설치 및 스크립트 수정
-- ✅ `cross-env` 패키지 설치: Windows 환경변수 호환성
-- ✅ `dotenv` 패키지 설치: .env 파일 로드
-- ✅ package.json 스크립트 수정: `cross-env NODE_ENV=development tsx server/index.ts`
-
-### 2. 환경변수 설정 (.env)
-```env
-NODE_ENV=development
-PORT=3000
-DATABASE_URL=postgresql://user:pass@localhost:5432/semantleko
-SESSION_SECRET=local-development-secret-key
-```
-
-### 3. 데이터베이스 설정 수정 (server/db.ts)
-- ✅ Neon 데이터베이스 의존성 제거
-- ✅ 로컬 개발용 mock 데이터베이스 URL 설정
-- ✅ 경고 메시지로 개발자에게 알림
-
-### 4. 인증 시스템 수정 (server/replitAuth.ts)
-- ✅ 로컬 개발 환경 감지
-- ✅ 메모리 기반 세션 스토어 사용 (PostgreSQL 대신)
-- ✅ 리다이렉트 URL을 localhost:3000으로 변경
-- ✅ HTTPS 보안 설정 비활성화 (로컬에서)
-
-### 5. 스토리지 시스템 수정 (server/storage.ts)
-- ✅ 메모리 스토리지(MemStorage) 사용
-- ✅ 데이터베이스 연결 없이 작동
-- ✅ 로컬 개발 환경 자동 감지
-
-### 6. 서버 호스트 설정 수정 (server/index.ts)
-- ✅ dotenv 설정 추가: `import "dotenv/config"`
-- ✅ Windows 호환성: `0.0.0.0` → `localhost`
-- ✅ 포트 기본값: 5000 → 3000
-- ✅ 개발 환경별 호스트 설정
-
-### 7. 현재 상태
-- ✅ 서버 성공적으로 시작: `localhost:3000`
-- ✅ 메모리 스토리지 활성화
-- ✅ 메모리 세션 스토어 활성화
-- ✅ Vite 개발 서버 통합
-- ✅ WebSocket 서버 활성화
-
-## 폴더 구조 분석
-
-### Root 파일들
-- `package.json`: Node.js 프로젝트 설정, 스크립트, 의존성 관리
-- `vite.config.ts`: Vite 빌드 도구 설정, 프론트엔드 빌드 담당
-- `drizzle.config.ts`: 데이터베이스 ORM 설정
-- `tsconfig.json`: TypeScript 컴파일러 설정
-- `tailwind.config.ts`: CSS 프레임워크 설정
-
-### client/ (프론트엔드)
-```
-client/
-├── index.html - 메인 HTML 엔트리포인트
-└── src/
-    ├── App.tsx - 메인 React 컴포넌트, 라우팅 설정
-    ├── main.tsx - React 애플리케이션 엔트리포인트
-    ├── index.css - 글로벌 스타일
-    ├── components/ - UI 컴포넌트들
-    │   ├── AuthNavigation.tsx - 인증 관련 내비게이션
-    │   ├── MatchBanner.tsx - 매치 정보 배너
-    │   ├── ResultModal.tsx - 게임 결과 모달
-    │   ├── RoundDots.tsx - 라운드 진행 표시
-    │   ├── ScoreRow.tsx - 점수 표시 행
-    │   ├── WordInput.tsx - 단어 입력 컴포넌트
-    │   └── ui/ - shadcn/ui 기반 재사용 가능한 UI 컴포넌트들
-    ├── hooks/ - React 커스텀 훅들
-    │   ├── useAuth.ts - 인증 상태 관리
-    │   ├── useGameState.ts - 게임 상태 관리
-    │   ├── use-mobile.tsx - 모바일 감지
-    │   └── use-toast.ts - 토스트 알림
-    ├── lib/ - 유틸리티 라이브러리들
-    │   ├── api.ts - API 호출 함수들
-    │   ├── authUtils.ts - 인증 관련 유틸리티
-    │   ├── queryClient.ts - TanStack Query 클라이언트 설정
-    │   ├── utils.ts - 일반 유틸리티 함수들
-    │   └── websocket.ts - WebSocket 통신 처리
-    └── pages/ - 페이지 컴포넌트들
-        ├── Game.tsx - 게임 플레이 페이지
-        ├── GameHistory.tsx - 게임 기록 페이지
-        ├── Home.tsx - 홈 페이지
-        ├── Landing.tsx - 랜딩/로그인 페이지
-        ├── Leaderboard.tsx - 리더보드 페이지
-        ├── Onboarding.tsx - 온보딩 페이지
-        ├── Settings.tsx - 설정 페이지
-        └── not-found.tsx - 404 페이지
-```
-
-### server/ (백엔드)
-```
-server/
-├── index.ts - Express 서버 엔트리포인트, 미들웨어 설정
-├── routes.ts - API 라우트 정의, WebSocket 처리
-├── db.ts - 데이터베이스 연결 설정 (로컬용 수정됨)
-├── storage.ts - 데이터베이스 쿼리 및 스토리지 로직 (메모리 스토리지 사용)
-├── replitAuth.ts - 인증 시스템 설정 (로컬용 수정됨)
-├── types.ts - TypeScript 타입 정의
-├── vite.ts - Vite 개발 서버 통합
-└── services/ - 비즈니스 로직 서비스들
-    ├── botPlayer.ts - AI 봇 플레이어 로직
-    ├── gameEngine.ts - 게임 엔진 코어 로직
-    └── word2vec.ts - 단어 유사도 계산 서비스
-```
-
-### shared/ (공유 코드)
-```
-shared/
-└── schema.ts - Drizzle ORM 데이터베이스 스키마 정의
-    - users 테이블 (사용자 정보)
-    - games 테이블 (게임 정보)
-    - gameSubmissions 테이블 (게임 제출 내용)
-    - sessions 테이블 (세션 관리)
-```
-
-### data/
-```
-data/
-└── korean_words.txt - 한국어 단어 데이터
-```
-
-## 핵심 기술 스택 상세
-
-### 프론트엔드 라이브러리
-- **React 18**: 메인 UI 프레임워크
-- **TypeScript**: 타입 안전성
-- **Vite**: 고속 빌드 도구
-- **Wouter**: 경량 라우팅 라이브러리
-- **TanStack Query**: 서버 상태 관리
-- **shadcn/ui + Radix UI**: 고품질 UI 컴포넌트
-- **Tailwind CSS**: 유틸리티 기반 CSS 프레임워크
-- **Framer Motion**: 애니메이션
-
-### 백엔드 라이브러리
-- **Express.js**: Node.js 웹 프레임워크
-- **WebSocket (ws)**: 실시간 양방향 통신
-- **Drizzle ORM**: TypeScript 우선 ORM
-- **PostgreSQL**: 관계형 데이터베이스 (프로덕션용)
-- **Express Session**: 세션 관리
-- **Passport.js**: 인증 미들웨어
-
-## 게임 플로우 분석
-
-### 1. 인증 시스템
-- Replit Auth 기반 OAuth 인증 (프로덕션)
-- 로컬 개발: 메모리 기반 세션 관리
-- PostgreSQL에 세션 저장 (프로덕션)
-
-### 2. 게임 생성 및 매칭
-- 큐 시스템을 통한 플레이어 매칭
-- AI 봇과의 연습 게임 지원
-- 실시간 WebSocket 연결
-
-### 3. 게임 진행
-- 5라운드 배틀 시스템
-- 각 라운드마다 단어 제출
-- Word2Vec 기반 유사도 점수 계산
+#### **UI/UX** ✅
+- 반응형 디자인 (모바일/데스크톱)
 - 실시간 점수 업데이트
+- 승리/패배 애니메이션
+- 라운드 진행 상태 표시
 
-### 4. 점수 계산
-- FastText 한국어 임베딩 사용 (현재는 목 데이터)
-- 의미적 유사도 기반 점수 산정
-- 라운드별 최고점 기록
+### 🔄 Git Commit History (최근)
 
-## 데이터베이스 스키마
-
-### users 테이블
-- id, nickname, email, profileImageUrl
-- 게임 통계: gamesPlayed, gamesWon, totalScore, bestScore
-- 연승 기록: currentStreak, bestStreak
-
-### games 테이블
-- id, player1Id, player2Id, isBot, botDifficulty
-- status: waiting, active, completed
-- currentRound, rounds (JSON), winnerId
-
-### gameSubmissions 테이블
-- gameId, userId, round, word, score, submittedAt
-
-## 개발 환경 설정
-
-### 로컬 개발 실행 방법
-1. 의존성 설치: `npm install`
-2. 개발 서버 시작: `npm run dev`
-3. 브라우저에서 http://localhost:3000 접속
-
-### 필요한 환경 변수 (.env)
-```env
-NODE_ENV=development
-PORT=3000
-DATABASE_URL=postgresql://user:pass@localhost:5432/semantleko
-SESSION_SECRET=local-development-secret-key
+```
+6aeb12e - Implement real FastText-based similarity calculation in bot games (❌ 배포에서 동작 안함)
+02d5543 - Fix: Change victory condition to best score instead of total score  
+25f203f - Fix: Remove StaticGameEngine dependency and implement inline bot game logic
+f305cf9 - Fix: Login redirect issue and enhance authentication flow
 ```
 
-### 주요 npm 스크립트
-- `npm run dev`: 개발 서버 시작 (cross-env + tsx)
-- `npm run build`: 프로덕션 빌드 (Vite + esbuild)
-- `npm run start`: 프로덕션 서버 시작
-- `npm run db:push`: 데이터베이스 스키마 푸시
+### 🚀 배포 현황
 
-## 로컬 개발 시 주의사항
-1. ✅ **메모리 스토리지**: 서버 재시작 시 데이터 초기화됨
-2. ✅ **메모리 세션**: 로그인 상태가 서버 재시작 시 초기화됨  
-3. ✅ **WebSocket 연결**: 실시간 기능이 정상 작동함
-4. ⚠️ **단어 유사도**: 현재 목 데이터, 실제 FastText 임베딩 필요
-5. ⚠️ **인증**: 로컬에서는 OAuth 설정 불완전
-6. ⚠️ **데이터베이스**: 실제 PostgreSQL 연결 시 추가 설정 필요
+#### **GitHub Repository** ✅
+- **URL**: `https://github.com/wheemin1/textsmbt.git`
+- **최신 커밋**: 실제 FastText 유사도 계산 시도 (실패)
+- **브랜치**: main (기본 기능 완성)
 
-## 프로덕션 배포 시 필요사항
-1. 실제 PostgreSQL 데이터베이스 URL 설정
-2. Google OAuth 클라이언트 설정 (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)  
-3. 세션 시크릿 키 설정
-4. FastText 한국어 임베딩 모델 통합
-5. Replit Deployments 설정
+#### **Netlify 배포** ✅  
+- 자동 배포 연동 완료
+- 정적 사이트 빌드 성공
+- ❌ **유사도 계산**: fallback만 동작
 
-## API 엔드포인트 (추정)
-- POST /api/queue/join - 게임 큐 참가
-- POST /api/games/:gameId/submit - 단어 제출
-- GET /api/games/:gameId - 게임 상태 조회
-- WebSocket /ws - 실시간 게임 업데이트
+### ⚠️ 현재 제한사항 및 문제점
 
-## 현재 실행 상태
-- ✅ 서버 실행 중: http://localhost:3000
-- ✅ 로컬 개발 환경 완전 설정 완료
-- ✅ 프론트엔드 + 백엔드 통합 서버 가동
-- ✅ WebSocket 실시간 통신 준비 완료
+#### **1. 유사도 계산 정확도 문제** ❌
+- **현재**: 글자 매칭 + 랜덤 점수
+- **필요**: 실제 의미론적 유사도
+- **문제**: FastText 데이터 접근 불가
 
-이 프로젝트는 Replit 환경에서 로컬 Windows 개발 환경으로 성공적으로 포팅되어 현재 localhost:3000에서 정상 작동 중입니다!
+#### **2. 정적 배포 환경 제약**
+- FastText 서버 API는 로컬에서만 사용 가능
+- Netlify에서는 fallback 유사도 계산만 사용
+- 실시간 멀티플레이어 기능 비활성화 (WebSocket 없음)
+
+#### **3. 게임 밸런스 이슈**
+- 봇 AI가 임의 점수로 동작
+- 실제 단어 유사성 반영 안됨
+- 게임의 교육적/재미 요소 부족
+
+### 🎯 우선 해결 과제
+
+#### **1순위: 유사도 계산 개선** 🚨
+- **Netlify Functions** 활용한 서버리스 API
+- **Pre-computed 유사도** 매트릭스 생성
+- **외부 API** 서비스 연동
+
+#### **2순위: 게임 밸런스 조정**
+- 봇 난이도별 현실적인 단어 선택
+- 점수 시스템 개선
+- 사용자 경험 향상
+
+#### **3순위: 성능 최적화**
+- 번들 크기 최소화
+- 로딩 시간 단축
+- 모바일 경험 개선
+
+### 🔧 해결 방안 제안
+
+#### **Option 1: Netlify Functions** (추천)
+```javascript
+// netlify/functions/similarity.js
+exports.handler = async (event, context) => {
+  const { word1, word2 } = JSON.parse(event.body);
+  
+  // 간단한 한국어 유사도 계산 로직
+  const similarity = calculateKoreanSimilarity(word1, word2);
+  
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ similarity })
+  };
+};
+```
+
+#### **Option 2: Pre-computed 매트릭스**
+```javascript
+// 자주 사용되는 단어 쌍들의 유사도 미리 계산
+const SIMILARITY_MATRIX = {
+  "자연_나무": 85,
+  "자연_환경": 92,
+  "자연_동물": 78,
+  // ... 수천 개 쌍
+};
+```
+
+#### **Option 3: 외부 API 서버**
+- Heroku/Railway에 FastText 서버 배포
+- CORS 설정으로 클라이언트에서 호출
+- 캐싱으로 응답 속도 최적화
+
+### 📊 현재 프로젝트 완성도
+
+#### **핵심 기능** ⚠️ (75% - 유사도 이슈)
+- ✅ 로그인/인증 시스템 (100%)
+- ✅ 봇 대전 게임 구조 (100%)
+- ❌ **실제 유사도 계산 (0%)**
+- ✅ 반응형 UI/UX (100%)
+- ✅ GitHub/Netlify 배포 (100%)
+
+#### **게임 품질** ⚠️ (40% - 유사도 문제로 낮음)
+- ✅ 게임플레이 플로우 (90%)
+- ❌ **유사도 정확도 (20%)**
+- ✅ 사용자 인터페이스 (90%)
+- ⚠️ 교육적 가치 (30%)
+
+### 🎯 단기 개발 목표
+
+#### **이번 주 목표**
+1. 🚨 **유사도 계산 개선**: Netlify Functions 또는 pre-computed 매트릭스
+2. 🔧 **게임 밸런스**: 현실적인 봇 AI 및 점수 시스템
+3. 📱 **사용자 경험**: 로딩 상태, 에러 처리 개선
+
+#### **다음 주 목표**
+1. 📊 **통계 시스템**: 플레이어 전적 및 순위
+2. 🎮 **추가 게임 모드**: 시간 제한, 힌트 모드
+3. 🔄 **성능 최적화**: 번들 크기, 로딩 속도
+
+### 🔄 중장기 로드맵
+
+#### **Phase 4: 품질 향상** (1-2주)
+- **실제 유사도 계산 구현**
+- 게임 밸런스 최적화  
+- 사용자 피드백 수집 및 반영
+
+#### **Phase 5: 기능 확장** (1개월)
+- 실시간 멀티플레이어 복구
+- 랭킹 및 통계 시스템
+- 소셜 기능 (친구, 공유)
+
+#### **Phase 6: 상용 준비** (2-3개월)
+- 서버 인프라 구축
+- 모바일 앱 개발
+- 마케팅 및 사용자 확보
+
+### 🔧 로컬 개발 환경
+
+#### **필수 파일들**
+- ✅ **FastText 벡터**: `data/fasttext/cc.ko.300.vec` (2GB)
+- ✅ **한국어 단어 목록**: `data/korean_words.txt`
+- ✅ **유사도 매트릭스**: `data/korean_word_similarities.csv`
+
+#### **실행 명령어**
+```bash
+npm run dev          # 개발 서버 (localhost:3000)
+npm run build        # 프로덕션 빌드  
+npx vite build       # 클라이언트 빌드 (Netlify용)
+```
+
+#### **로컬에서만 가능한 기능**
+- ✅ **실제 FastText 유사도 계산**
+- ✅ **완전한 봇 AI 성능**
+- ✅ **실시간 멀티플레이어**
+- ✅ **정확한 단어 검증**
+
+### 📈 성능 및 최적화
+
+#### **현재 성능**
+- **빌드 크기**: ~500KB (최적화됨)
+- **로딩 시간**: <2초 (정적 파일)
+- **메모리 사용**: 최소 (localStorage만 사용)
+
+#### **개선 필요 사항**
+- **유사도 API 응답 시간**: 현재 fallback만
+- **모바일 경험**: 터치 최적화 필요
+- **오프라인 지원**: PWA 기능 추가
+
+### 🎉 현재 상태 요약
+
+**SemantleKo 프로젝트는 기본 구조는 완성되었지만, 핵심 기능인 유사도 계산에 문제가 있어 개선이 필요한 상태입니다.**
+
+#### **✅ 완성된 부분**
+- 🎮 **게임 플레이 구조**: 완전히 작동
+- 🎨 **사용자 인터페이스**: 고품질 완성
+- 🚀 **배포 시스템**: GitHub + Netlify 안정적
+- 🔐 **인증 시스템**: 기본 기능 완성
+
+#### **❌ 문제점**
+- 🧠 **유사도 계산**: 임의 데이터 사용 (가장 큰 문제)
+- 🎯 **게임 품질**: 교육적 가치 부족
+- ⚖️ **밸런스**: 현실적이지 않은 점수 시스템
+
+#### **🎯 즉시 해결 필요**
+1. **유사도 계산 개선** (Netlify Functions 또는 pre-computed)
+2. **게임 밸런스 조정** (현실적인 봇 성능)
+3. **사용자 경험 향상** (피드백 및 가이드)
+
+**다음 접속**: 로컬 localhost:3000 (완전 기능) 또는 Netlify 배포 사이트 (제한적 기능)
+
+이 프로젝트는 기술적 구조는 훌륭하지만, 게임의 핵심인 단어 유사도 계산 부분의 개선이 시급합니다! 🎯
