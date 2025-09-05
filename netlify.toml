@@ -5,13 +5,14 @@
   # Build settings
   base = ""
   publish = "client/dist"
-  command = "cp package-client.json package.json && npm install --legacy-peer-deps && npx vite build"
+  command = "cp package-client.json package.json && npm install --legacy-peer-deps --include=dev && npx vite build"
   
   # Build environment
   [build.environment]
     NODE_VERSION = "20.18.0"
     NODE_ENV = "production"
     NPM_FLAGS = "--legacy-peer-deps"
+    NPM_CONFIG_PRODUCTION = "false"
     NETLIFY = "true"
 
 # Build processing settings
