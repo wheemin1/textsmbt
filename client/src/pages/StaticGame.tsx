@@ -29,18 +29,40 @@ interface SimpleGameState {
 }
 
 const TARGET_WORDS = [
-  "사랑", "행복", "친구", "가족", "자연", "음악", "여행", "꿈", "평화", "희망"
+  // 꼬맨틀 기반 고빈도 목표 단어들
+  "가족", "어머니", "아버지", "부모", "형제", "자매", "친구", "사랑", "행복", "기쁨",
+  "자연", "나무", "꽃", "산", "바다", "강", "하늘", "별", "달", "태양",
+  "음식", "집", "학교", "회사", "시간", "오늘", "내일", "아침", "저녁", "밤",
+  "생각", "문제", "방법", "이유", "결과", "변화", "성장", "경험", "기회", "희망",
+  "사회", "문화", "교육", "정치", "기술", "과학", "예술", "운동", "여행", "음악"
 ];
 
+// 꼬맨틀에서 사용하는 의미적 연관도가 높은 봇 단어들
 const BOT_WORDS = {
-  easy: ["좋아", "친절", "사람", "집", "나무", "소리", "길", "마음", "시간", "빛"],
-  medium: ["애정", "기쁨", "동료", "혈족", "환경", "선율", "모험", "이상", "화합", "기대"],
-  hard: ["연애", "즐거움", "벗", "혈연", "생태", "멜로디", "탐험", "포부", "조화", "염원"]
+  easy: [
+    // 쉬운 난이도: 목표와 직접적으로 연관된 단어들
+    "좋아", "친절", "사람", "집", "나무", 
+    "소리", "길", "마음", "시간", "빛"
+  ],
+  medium: [
+    // 중간 난이도: 의미적 연관성이 높은 단어들
+    "애정", "기쁨", "동료", "혈족", "환경", 
+    "선율", "모험", "이상", "화합", "기대"
+  ],
+  hard: [
+    // 어려운 난이도: 고도의 의미적 연관성을 가진 단어들
+    "연애", "즐거움", "벗", "혈연", "생태", 
+    "멜로디", "탐험", "포부", "조화", "염원"
+  ]
 };
 
-// 개선된 Netlify Functions 기반 유사도 계산
-const calculateSimilarity = async (word1: string, word2: string): Promise<number> => {
-  if (word1 === word2) return 100;
+// 개선된 Netlify Functions 기반 유사도 계산 (꼬맨틀 스타일 통계 포함)
+const calculateSimilarity = async (
+  word1: string, 
+  word2: string, 
+  gameId?: string
+): Promise<{ similarity: number; stats?: { top: number; top10: number; rest: number } }> => {
+  if (word1 === word2) return { similarity: 100 };
   
   try {
     // Netlify Functions 엔드포인트 사용
@@ -49,7 +71,7 @@ const calculateSimilarity = async (word1: string, word2: string): Promise<number
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ word1, word2 }),
+      body: JSON.stringify({ word1, word2, gameId }),
     });
 
     if (!response.ok) {
@@ -57,11 +79,14 @@ const calculateSimilarity = async (word1: string, word2: string): Promise<number
     }
 
     const data = await response.json();
-    return data.similarity || 0;
+    return {
+      similarity: data.similarity || 0,
+      stats: data.stats
+    };
   } catch (error) {
     console.error("유사도 계산 오류:", error);
     // 오류 시 fallback으로 간단한 계산
-    return calculateFallbackSimilarity(word1, word2);
+    return { similarity: calculateFallbackSimilarity(word1, word2) };
   }
 };
 
@@ -121,6 +146,11 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
   const [gameState, setGameState] = useState<SimpleGameState | null>(null);
   const [currentWord, setCurrentWord] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [similarityStats, setSimilarityStats] = useState<{
+    top: number;
+    top10: number;
+    rest: number;
+  } | null>(null);
 
   useEffect(() => {
     // 로컬 스토리지에서 게임 상태 로드
@@ -181,12 +211,20 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
 
   const submitRound = async (currentGameState: SimpleGameState, word: string) => {
     const target = currentGameState.currentTarget || "";
-    const playerScore = word ? await calculateSimilarity(word, target) : 0;
+    const playerResult = word ? await calculateSimilarity(word, target, params.gameId) : { similarity: 0 };
+    const playerScore = playerResult.similarity;
+    const gameStats = playerResult.stats; // 꼬맨틀 스타일 통계
+    
+    // 첫 번째 라운드에서 통계 설정
+    if (gameStats && !similarityStats) {
+      setSimilarityStats(gameStats);
+    }
     
     // 봇 단어 선택
     const botWordList = BOT_WORDS[currentGameState.difficulty as keyof typeof BOT_WORDS] || BOT_WORDS.easy;
     const botWord = botWordList[currentGameState.currentRound - 1] || botWordList[0];
-    let botScore = await calculateSimilarity(botWord, target);
+    const botResult = await calculateSimilarity(botWord, target);
+    let botScore = botResult.similarity;
     
     // 난이도별 봇 점수 조정
     switch (currentGameState.difficulty) {
@@ -337,6 +375,42 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
           </div>
         </CardHeader>
       </Card>
+
+      {/* 꼬맨틀 스타일 유사도 통계 (게임 시작 후 통계가 있으면 표시) */}
+      {similarityStats && (
+        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg text-center text-blue-800">
+              📊 정답 단어 "{ gameState.currentTarget }" 유사도 통계
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="bg-green-100 p-3 rounded-lg border border-green-300">
+                <div className="text-sm text-green-700 font-medium">가장 유사한 단어</div>
+                <div className="text-2xl font-bold text-green-800">{similarityStats.top.toFixed(1)}</div>
+                <div className="text-xs text-green-600">유사도</div>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg border border-blue-300">
+                <div className="text-sm text-blue-700 font-medium">10번째로 유사한 단어</div>
+                <div className="text-2xl font-bold text-blue-800">{similarityStats.top10.toFixed(1)}</div>
+                <div className="text-xs text-blue-600">유사도</div>
+              </div>
+              <div className="bg-orange-100 p-3 rounded-lg border border-orange-300">
+                <div className="text-sm text-orange-700 font-medium">1000번째 유사도</div>
+                <div className="text-2xl font-bold text-orange-800">{similarityStats.rest.toFixed(1)}</div>
+                <div className="text-xs text-orange-600">기준점</div>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-700 text-center">
+                💡 <strong>힌트:</strong> 정답 단어와 가장 유사한 단어의 유사도는 <strong>{similarityStats.top.toFixed(1)}</strong>이고, 
+                10번째로 유사한 단어의 유사도는 <strong>{similarityStats.top10.toFixed(1)}</strong>입니다.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Game Status */}
       {gameState.status === "active" && (
