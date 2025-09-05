@@ -5,7 +5,7 @@ Korean version of Semantle - a word guessing game based on semantic similarity.
 ## 🎯 Game Features
 
 - **Korean Word Similarity**: Uses FastText Korean word embeddings
-- **Real-time Multiplayer**: WebSocket-based multiplayer support  
+- **Real-time Multiplayer**: WebSocket-based multiplayer support
 - **Enhanced Scoring**: Improved scoring system matching English Semantle
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 
@@ -27,11 +27,13 @@ Korean version of Semantle - a word guessing game based on semantic similarity.
 ### Local Development
 
 1. **Install Dependencies**:
+
    ```bash
    npm install
    ```
 
 2. **Setup FastText Model** (for full functionality):
+
    ```bash
    npm run setup:fasttext
    ```
@@ -52,6 +54,7 @@ Korean version of Semantle - a word guessing game based on semantic similarity.
 ## 📦 Technical Details
 
 ### File Structure
+
 ```
 ├── client/               # React frontend
 ├── server/              # Express backend

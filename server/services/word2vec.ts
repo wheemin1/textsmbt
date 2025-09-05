@@ -147,14 +147,6 @@ class Word2VecService {
     ];
   }
 
-  // 개선된 점수 변환 함수 - Semantle 수준의 점수 범위 제공
-  private calculateEnhancedScore(cosineSimilarity: number): number {
-    // Semantle과 유사한 점수 범위 (30-60점대)를 위한 스케일링
-    // 코사인 유사도 0.3 → 약 50점, 0.5 → 약 70점, 0.7 → 약 90점
-    const enhanced = Math.min(100, Math.max(0, (cosineSimilarity + 0.15) * 120));
-    return Math.round(enhanced);
-  }
-
   private loadSampleVectors() {
     // Use frequent words from file instead of hardcoded list
     const wordsToUse = this.frequentWords.length > 0 ? this.frequentWords : [
@@ -202,9 +194,9 @@ class Word2VecService {
         
         if (vec1 && vec2) {
           const similarity = directFastText.calculateCosineSimilarity(vec1, vec2);
-          const score = this.calculateEnhancedScore(similarity);
+          const score = Math.max(0, Math.round(similarity * 100));
           
-          console.log(`🎯 DirectFastText (on-demand): "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score} (enhanced)`);
+          console.log(`🎯 DirectFastText (on-demand): "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score}`);
           
           return {
             similarity: score,
@@ -223,10 +215,10 @@ class Word2VecService {
     if (this.useFastText && directFastText.hasWord(word1) && directFastText.hasWord(word2)) {
       const similarity = directFastText.cosineSimilarity(word1, word2);
       
-      // 개선된 스케일링 적용 - Semantle 수준의 점수 범위
-      const score = this.calculateEnhancedScore(similarity);
+      // semantle-ko와 완전히 동일한 방식: 코사인 유사도에 100을 곱함
+      const score = Math.max(0, Math.round(similarity * 100));
       
-      console.log(`🎯 DirectFastText: "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score} (enhanced)`);
+      console.log(`🎯 DirectFastText: "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score}`);
       
       return {
         similarity: score,
@@ -248,10 +240,11 @@ class Word2VecService {
         console.log(`🔍 DEBUG: ${word2} vector preview: [${fastTextVec2.slice(0, 5).join(', ')}...]`);
       }
       
-      // 개선된 스케일링 적용 - Semantle 수준의 점수 범위
-      const score = this.calculateEnhancedScore(similarity);
+      // semantle-ko와 완전히 동일한 방식: 코사인 유사도에 100을 곱함
+      // 코사인 유사도는 -1 ~ 1 범위이므로, 음수는 0으로 처리
+      const score = Math.max(0, Math.round(similarity * 100));
       
-      console.log(`🎯 SEMANTLE-KO enhanced: "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score} (enhanced)`);
+      console.log(`🎯 SEMANTLE-KO style: "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score}`);
       
       return {
         similarity: score,
@@ -263,12 +256,12 @@ class Word2VecService {
     if (process.env.NODE_ENV === 'development' && (!vec1 || !vec2)) {
       // 단어 유사도를 간단한 규칙으로 계산
       const similarity = this.calculateSimpleSimilarity(word1, word2);
-      let score = this.calculateEnhancedScore(similarity);
+      let score = Math.round(similarity * 100);
       
-      // 0점 방지: 최소 10점은 보장 (개선된 스케일링으로 인해 상향)
-      score = Math.max(10, score);
+      // 0점 방지: 최소 5점은 보장
+      score = Math.max(5, score);
       
-      console.log(`🔍 Similarity (enhanced): "${word1}" vs "${word2}" = ${similarity.toFixed(3)} → ${score}점`);
+      console.log(`🔍 Similarity: "${word1}" vs "${word2}" = ${similarity.toFixed(3)} → ${score}점`);
       
       return {
         similarity: score,

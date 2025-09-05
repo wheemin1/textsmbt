@@ -328,9 +328,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         opponent: {
           nickname: game.isBot ? "AI 봇" : "상대방", // TODO: Get actual opponent nickname
           type: game.isBot ? "bot" : "human"
-        },
-        debugInfo: {
-          targetWord: gameEngine.getTargetWordForDebug(gameId, game.currentRound)
         }
       });
     } catch (error) {
@@ -478,32 +475,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get word rank error:', error);
       res.status(500).json({ error: "SERVER_ERROR", message: "단어 순위 조회 중 오류가 발생했습니다" });
-    }
-  });
-
-  // Test similarity calculation endpoint
-  app.get("/api/test/similarity/:targetWord/:testWord", async (req, res) => {
-    try {
-      const { targetWord, testWord } = req.params;
-      
-      console.log(`🧪 Testing similarity: "${testWord}" vs "${targetWord}"`);
-      
-      const similarityResult = await word2vecService.calculateSimilarity(testWord, targetWord);
-      // similarity는 이미 개선된 점수이므로 그대로 사용
-      const score = similarityResult.similarity * 100;
-      
-      console.log(`🧪 Result: "${testWord}" vs "${targetWord}" enhanced score=${similarityResult.similarity} → display=${score}`);
-
-      res.json({
-        targetWord,
-        testWord,
-        similarity: similarityResult.similarity,
-        score,
-        rank: similarityResult.rank || "N/A"
-      });
-    } catch (error) {
-      console.error('Test similarity error:', error);
-      res.status(500).json({ error: "SERVER_ERROR", message: "유사도 테스트 중 오류가 발생했습니다" });
     }
   });
 

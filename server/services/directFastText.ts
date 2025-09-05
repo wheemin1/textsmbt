@@ -32,10 +32,7 @@ export class DirectFastText {
 
   // Load a single word vector from FastText file
   private async loadSingleVector(word: string): Promise<number[] | null> {
-    if (!this.fastTextPath || !fs.existsSync(this.fastTextPath)) {
-      console.warn('⚠️ FastText file not available in production environment');
-      return null;
-    }
+    if (!this.fastTextPath) return null;
 
     const fileStream = fs.createReadStream(this.fastTextPath, { encoding: 'utf8' });
     const rl = readline.createInterface({

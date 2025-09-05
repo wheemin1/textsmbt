@@ -61,20 +61,10 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
+  const port = parseInt(process.env.PORT || '3000', 10);
+  const host = process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';
   
-  // For Netlify Functions, don't start the server
-  if (process.env.NETLIFY !== 'true') {
-    const port = parseInt(process.env.PORT || '3000', 10);
-    const host = process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';
-    
-    server.listen(port, host, () => {
-      log(`serving on ${host}:${port}`);
-    });
-  }
-  
-  // Export app for serverless functions
-  return { app, server };
+  server.listen(port, host, () => {
+    log(`serving on ${host}:${port}`);
+  });
 })();
-
-// Export app for Netlify Functions
-export default app;

@@ -102,7 +102,9 @@ export default function Landing() {
         <Card className="bg-card shadow-md">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+              {/* AI 봇 아이콘 (색상 #8C8C8C 적용) */}
               <i className="fas fa-robot text-secondary text-xl"></i>
+              <i className="fas fa-robot text-xl" style={{ color: "#8C8C8C" }}></i>
             </div>
             <h3 className="text-lg font-semibold text-card-foreground mb-2">AI 봇 연습</h3>
             <p className="text-sm text-muted-foreground">
@@ -110,6 +112,7 @@ export default function Landing() {
             </p>
           </CardContent>
         </Card>
+        
       </div>
     </main>
   );

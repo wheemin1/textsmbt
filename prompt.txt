@@ -1,6 +1,157 @@
 # SemantleKo 프로젝트 현황 및 개발 진행상황
 
-## 🎯 현재 상태 (2025-09-05)
+## 🚀 현재 상태 (2025-09-05) - GitHub 연동 및 Netlify 배포
+
+### 🔄 진행중인 배포 작업
+
+#### **GitHub Repository 연동 완료**
+- ✅ Repository: `https://github.com/wheemin1/textsmbt.git`
+- ✅ FastText 대용량 파일 Git 히스토리에서 완전 제거 (219MB → GitHub 100MB 제한)
+- ✅ `.gitignore` 업데이트: `data/fasttext/` 폴더 제외
+- ✅ 모든 프로젝트 파일 성공적으로 push 완료
+
+#### **Netlify 자동 배포 설정 진행중**
+- ✅ **netlify.toml** 설정 파일 생성
+- ✅ **package-client.json** 클라이언트 전용 의존성 분리
+- ✅ **Node.js 버전** 20.18.0 설정 (`.nvmrc`)
+- 🔄 **현재 이슈**: Vite 설정 파일 호환성 문제
+
+#### **현재 배포 에러 상황**
+```
+❌ Error: Cannot find package 'vite' imported from vite.config.ts
+❌ Build failed: Command failed with exit code 1
+```
+
+**문제 분석:**
+- `vite.config.ts`가 Replit 전용 플러그인들을 import 시도
+- `package-client.json`에는 Replit 관련 의존성 없음
+- Netlify 빌드 환경에서 호환되지 않는 Vite 설정
+
+**해결 방안 (Next Steps):**
+1. Netlify 전용 `vite.config.netlify.ts` 생성 필요
+2. 또는 빌드 스크립트에서 설정 파일 교체
+3. Replit 플러그인 없는 순수 React+Vite 설정 적용
+
+### 📋 배포 설정 파일들
+
+#### **netlify.toml** (Netlify 배포 설정)
+```toml
+[build]
+  command = "cp package-client.json package.json && npm install --legacy-peer-deps && npx vite build"
+  publish = "client/dist"
+
+[build.environment]
+  NODE_VERSION = "20.18.0"
+  NODE_ENV = "production"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+
+[[headers]]  
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+#### **package-client.json** (클라이언트 전용 의존성)
+- 서버 의존성 제거 (express, ws, drizzle-orm 등)
+- Replit 플러그인 제거 (@replit/vite-plugin)
+- 순수 React+Vite+TypeScript 스택만 유지
+- tailwindcss 3.4.15로 다운그레이드 (호환성)
+
+#### **배포 플로우**
+1. `package-client.json` → `package.json` 복사
+2. `npm install --legacy-peer-deps` 의존성 설치  
+3. `npx vite build` 정적 사이트 빌드
+4. `client/dist` 폴더를 Netlify에 배포
+
+### 🔧 기술적 도전과제
+
+#### **Vite 설정 파일 충돌**
+- **문제**: `vite.config.ts`가 Replit 플러그인 import
+- **현재 코드**: `import { replit } from "@replit/vite-plugin"`
+- **해결 필요**: Netlify 호환 버전 생성
+
+#### **의존성 버전 호환성**  
+- ✅ Node.js 18.17.0 → 20.18.0 업그레이드 완료
+- ✅ tailwindcss 3.5.0 → 3.4.15 다운그레이드 완료
+- ✅ --legacy-peer-deps 플래그 적용
+
+### 📅 배포 진행 타임라인
+
+#### **Phase 1: GitHub Repository 연동** ✅
+- Repository 생성 및 원격 등록
+- FastText 파일 히스토리 정리 (`git filter-branch`)
+- 전체 프로젝트 코드 push 완료
+
+#### **Phase 2: Netlify 배포 설정** ✅  
+- 자동 배포 연동 설정
+- 빌드 설정 파일들 생성
+- Node.js 환경 최적화
+
+#### **Phase 3: 빌드 문제 해결** 🔄 (현재 단계)
+- Vite 설정 호환성 문제 해결 중
+- 다음 시도: 순수 Vite 설정 파일 생성
+
+#### **Git Commit History (최근)**
+```
+31c9776 - Simplify build process to fix vite not found error
+8b891c4 - Update build script with Vite installation verification  
+2a8b72c - Update Netlify configuration for build optimization
+fbd5252 - Add Netlify deployment configuration
+```
+
+### 🎯 배포 전략
+
+#### **Static Site 최적화**
+- ✅ 서버 코드 완전 분리
+- ✅ 클라이언트 전용 의존성만 설치
+- ✅ 정적 자산 빌드 (`client/dist`)
+- ⚠️ WebSocket/실시간 기능은 배포 시 비활성화
+
+#### **FastText 데이터 처리**  
+- ✅ 로컬 개발: 2GB 파일 사용
+- ✅ 배포 버전: Mock 데이터 또는 API 호출로 대체
+- 🔄 향후: CDN 또는 별도 서비스로 분리 예정
+
+### 🐛 현재 배포 에러 상세 분석
+
+#### **Netlify Build Log (2025-09-05 10:41 AM)**
+```
+❌ failed to load config from /opt/build/repo/vite.config.ts
+❌ Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from vite.config.ts
+❌ Command failed with exit code 1: npx vite build
+```
+
+#### **에러 분석**
+1. **npx vite build** 성공적으로 vite@6.3.5 설치함
+2. **npm install** 완료: 43 packages audited, 0 vulnerabilities
+3. **vite.config.ts 로딩 실패**: 설정 파일에서 'vite' 패키지 import 실패
+4. **근본 원인**: `package-client.json`에 `vite` 및 Replit 플러그인 누락
+
+#### **현재 vite.config.ts 문제점**
+```typescript
+// 현재 설정 (Replit 의존)
+import { defineConfig } from "vite"
+import { replit } from "@replit/vite-plugin"  // ❌ package-client.json에 없음
+import react from "@vitejs/plugin-react"
+```
+
+#### **해결 방안 우선순위**
+1. **🥇 즉시 해결**: Netlify 전용 vite.config 생성
+2. **🥈 중기 계획**: 조건부 플러그인 로딩
+3. **🥉 장기 계획**: 환경별 설정 파일 분리
 
 ### ✅ 최근 완료된 작업들
 

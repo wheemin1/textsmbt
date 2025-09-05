@@ -17,7 +17,7 @@ class WebSocketManager {
       try {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const host = window.location.host || 'localhost:3000';
-        const wsUrl = `${protocol}//${host}/ws`;
+        const wsUrl = `${protocol}//${host}`;
         
         this.socket = new WebSocket(wsUrl);
 

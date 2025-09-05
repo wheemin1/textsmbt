@@ -87,9 +87,7 @@ export default function Game() {
                 </span>
               </div>
               {/* 목표 단어 표시 */}
-              {(gameState as any).debugInfo?.targetWord && 
-               (gameState as any).debugInfo.targetWord !== "없음" && 
-               (gameState as any).debugInfo.targetWord !== "Hidden in production" && (
+              {(gameState as any).debugInfo?.targetWord && (
                 <>
                   <div className="h-6 w-px bg-border"></div>
                   <div className="flex items-center space-x-2">
@@ -100,15 +98,12 @@ export default function Game() {
                   </div>
                 </>
               )}
-              {/* 현재 라운드 최고 점수 표시 */}
+              {/* 현재 점수 표시 */}
               <div className="h-6 w-px bg-border"></div>
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-muted-foreground">최고 점수:</span>
+                <span className="text-sm text-muted-foreground">현재 점수:</span>
                 <span className="font-bold text-accent bg-accent/10 px-2 py-1 rounded text-lg">
                   {gameState.myBestScore}점
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  vs {gameState.opponentBestScore}점
                 </span>
               </div>
             </div>

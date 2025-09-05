@@ -297,27 +297,13 @@ class GameEngine {
 
   // 개발 모드에서 목표 단어를 노출하는 공개 메서드
   getTargetWordForDebug(gameId: string, round: number): string {
-    console.log(`🔍 Debug: gameId=${gameId}, round=${round}, NODE_ENV=${process.env.NODE_ENV}`);
     if (process.env.NODE_ENV !== 'development') {
       return 'Hidden in production';
     }
-    const targetWord = this.getTargetWord(gameId, round);
-    console.log(`🔍 Debug: calculated targetWord="${targetWord}"`);
-    
-    // 유효한 단어인지 확인
-    if (!targetWord || targetWord === "없음" || targetWord.trim() === "") {
-      console.warn(`⚠️ Invalid target word: "${targetWord}", using fallback`);
-      return '시간'; // 기본 대체 단어
-    }
-    
-    return targetWord;
+    return this.getTargetWord(gameId, round);
   }
 
   async createGame(player1Id: string, player2Id?: string, isBot: boolean = false): Promise<Game> {
-    // Pre-calculate target word for first round
-    const tempGameId = Math.random().toString(36);
-    const targetWord = this.getTargetWord(tempGameId, 1);
-    
     const game = await storage.createGame({
       player1Id,
       player2Id: isBot ? "bot" : player2Id,
@@ -325,30 +311,17 @@ class GameEngine {
       botDifficulty: isBot ? "normal" : undefined,
       status: "active",
       currentRound: 1,
-      rounds: [{
-        round: 1,
-        targetWord: targetWord,
-        submissions: [],
-        timeStarted: Date.now(),
-        timeEnded: null
-      }]
+      rounds: []
     });
 
     // Start first round timer
     this.startRoundTimer(game.id, 1);
 
     // Pre-calculate similarity stats for the target word
-    // Use actual game.id for target word calculation
-    const actualTargetWord = this.getTargetWord(game.id, 1);
-    similarityStatsService.preCalculateStats(actualTargetWord).catch(error => {
-      console.warn(`Failed to pre-calculate stats for "${actualTargetWord}":`, error);
+    const targetWord = this.getTargetWord(game.id, 1);
+    similarityStatsService.preCalculateStats(targetWord).catch(error => {
+      console.warn(`Failed to pre-calculate stats for "${targetWord}":`, error);
     });
-
-    // Update the round with correct target word if needed
-    if (actualTargetWord !== targetWord) {
-      game.rounds[0].targetWord = actualTargetWord;
-      await storage.updateGame(game.id, { rounds: game.rounds });
-    }
 
     return game;
   }

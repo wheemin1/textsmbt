@@ -39,8 +39,7 @@ try {
     if ($sevenZip) {
         & 7z x $downloadPath -o"$fastTextDir"
         Write-Host "✅ Extraction completed with 7-Zip!" -ForegroundColor Green
-    }
-    else {
+    } else {
         Write-Host "⚠️  7-Zip not found. Please manually extract:" -ForegroundColor Yellow
         Write-Host "   1. Extract $downloadPath"
         Write-Host "   2. Place cc.ko.300.vec in data/fasttext/"
@@ -59,14 +58,12 @@ try {
         Write-Host "   File: $extractedPath"
         Write-Host "   Size: $([math]::Round($fileSize, 2)) GB"
         Write-Host "`n🚀 Restart your server to use FastText vectors!"
-    }
-    else {
+    } else {
         Write-Host "❌ Extraction failed. Please manually extract the file." -ForegroundColor Red
         exit 1
     }
     
-}
-catch {
+} catch {
     Write-Host "❌ Download failed: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "`n📝 Manual download instructions:" -ForegroundColor Yellow
     Write-Host "   1. Download: $vectorUrl"

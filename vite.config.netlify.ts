@@ -2,31 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-// 조건부로 Replit 플러그인 로드 (Netlify에서는 건너뛰기)
-const loadReplitPlugins = async () => {
-  // Netlify 환경에서는 Replit 플러그인을 로드하지 않음
-  if (process.env.NETLIFY || process.env.NODE_ENV === "production") {
-    return [];
-  }
-  
-  try {
-    const runtimeErrorOverlay = (await import("@replit/vite-plugin-runtime-error-modal")).default;
-    const cartographer = await import("@replit/vite-plugin-cartographer").then((m) => m.cartographer());
-    
-    return [
-      runtimeErrorOverlay(),
-      ...(process.env.REPL_ID !== undefined ? [cartographer] : []),
-    ];
-  } catch (error) {
-    console.warn("Replit plugins not available, continuing without them");
-    return [];
-  }
-};
-
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [
     react(),
-    ...(await loadReplitPlugins()),
+    // Netlify 환경에서는 Replit 플러그인들을 제외
   ],
   resolve: {
     alias: {
@@ -56,4 +35,4 @@ export default defineConfig(async () => ({
       deny: ["**/.*"],
     },
   },
-}));
+});
