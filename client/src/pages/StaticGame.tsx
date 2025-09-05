@@ -342,37 +342,37 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
 
   return (
     <>
-      {/* 플로팅 상단 헤더 - 항상 고정 */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-lg border-b">
-        <div className="max-w-4xl mx-auto p-3">
+      {/* 플로팅 상단 헤더 - 2배 크기로 확대 */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-xl border-b-2">
+        <div className="max-w-6xl mx-auto p-6">
           <div className="flex justify-between items-center">
             <div className="text-center">
-              <div className="text-xl font-bold text-red-600">⏰ {gameState.timeRemaining}초</div>
-              <div className="text-xs text-muted-foreground">남은 시간</div>
+              <div className="text-4xl font-bold text-red-600">⏰ {gameState.timeRemaining}초</div>
+              <div className="text-lg text-muted-foreground font-medium">남은 시간</div>
             </div>
             
             {similarityStats && (
-              <div className="flex space-x-4">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-green-700">{similarityStats.top.toFixed(1)}</div>
-                  <div className="text-xs text-green-600">최고</div>
+              <div className="flex space-x-8">
+                <div className="text-center bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                  <div className="text-2xl font-bold text-green-700">{similarityStats.top.toFixed(1)}</div>
+                  <div className="text-sm text-green-600 font-medium">최고 유사도</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-blue-700">{similarityStats.top10.toFixed(1)}</div>
-                  <div className="text-xs text-blue-600">10위</div>
+                <div className="text-center bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                  <div className="text-2xl font-bold text-blue-700">{similarityStats.top10.toFixed(1)}</div>
+                  <div className="text-sm text-blue-600 font-medium">10위 유사도</div>
                 </div>
               </div>
             )}
             
             <div className="text-center">
-              <div className="text-lg font-bold text-primary">R{gameState.currentRound}/{gameState.maxRounds}</div>
-              <div className="text-xs text-muted-foreground">"{gameState.currentTarget}"</div>
+              <div className="text-2xl font-bold text-primary">라운드 {gameState.currentRound}/{gameState.maxRounds}</div>
+              <div className="text-lg text-primary font-semibold">목표: "{gameState.currentTarget}"</div>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-4xl px-4 py-8 space-y-6" style={{paddingTop: '100px'}}>
+      <main className="mx-auto max-w-4xl px-4 py-8 space-y-6" style={{paddingTop: '160px'}}>
         {/* Game Header */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -394,24 +394,6 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
           </div>
         </div>
       </div>
-
-      {/* 꼬맨틀 스타일 유사도 통계 - 간소화된 상단 표시 */}
-      {similarityStats && (
-        <Card className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 shadow-md">
-          <CardContent className="p-4">
-            <div className="flex justify-center items-center space-x-8">
-              <div className="text-center">
-                <div className="text-sm text-green-700 font-medium">가장 유사한 단어</div>
-                <div className="text-2xl font-bold text-green-800">{similarityStats.top.toFixed(1)}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-blue-700 font-medium">10번째로 유사한 단어</div>
-                <div className="text-2xl font-bold text-blue-800">{similarityStats.top10.toFixed(1)}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Game Status */}
       {gameState.status === "active" && (

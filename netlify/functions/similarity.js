@@ -50,7 +50,7 @@ function calculateKoreanSimilarity(word1, word2) {
   return Math.max(-100, Math.min(100, finalScore));
 }
 
-// 꼬맨틀 스타일 고급 의미적 유사도 - "결과" 단어 특화
+// 꼬맨틀 스타일 고급 의미적 유사도 - "시간" 단어 특화 추가
 function calculateSemanticSimilarityAdvanced(word1, word2) {
   // "결과" 단어에 대한 특별 처리
   if (word1 === '결과' || word2 === '결과') {
@@ -72,6 +72,29 @@ function calculateSemanticSimilarityAdvanced(word1, word2) {
     }
     if (resultRelatedWords.low.includes(otherWord)) {
       return 50 + Math.random() * 20; // 50-70점
+    }
+  }
+
+  // "시간" 단어에 대한 특별 처리 추가
+  if (word1 === '시간' || word2 === '시간') {
+    const otherWord = word1 === '시간' ? word2 : word1;
+    const timeRelatedWords = {
+      // 매우 높은 연관성 (85-95점) - 시간과 직접적으로 관련된 단어들
+      high: ['시계', '분', '초', '시각', '때', '순간', '시기', '기간', '동안', '시점'],
+      // 높은 연관성 (75-85점) - 시간 관련 개념들
+      medium: ['오늘', '내일', '어제', '과거', '현재', '미래', '년', '월', '일', '주', '년도', '세월', '연도'],
+      // 중간 연관성 (60-75점) - 시간과 관련된 활동/상황들  
+      low: ['일정', '약속', '계획', '준비', '기다림', '늦음', '빠름', '빨리', '천천히', '급함']
+    };
+    
+    if (timeRelatedWords.high.includes(otherWord)) {
+      return 85 + Math.random() * 10; // 85-95점
+    }
+    if (timeRelatedWords.medium.includes(otherWord)) {
+      return 75 + Math.random() * 10; // 75-85점  
+    }
+    if (timeRelatedWords.low.includes(otherWord)) {
+      return 60 + Math.random() * 15; // 60-75점
     }
   }
 
@@ -104,8 +127,9 @@ function calculateSemanticSimilarityAdvanced(word1, word2) {
     // 시간
     time: {
       words: ['시간', '오늘', '어제', '내일', '아침', '점심', '저녁', '밤', '새벽',
-              '년', '월', '일', '시', '분', '초', '주말', '평일', '휴일'],
-      weight: 0.70
+              '년', '월', '일', '시', '분', '초', '주말', '평일', '휴일', '시계', 
+              '시각', '때', '순간', '시기', '기간', '동안', '시점', '년도', '세월', '연도'],
+      weight: 0.90  // 시간 관련 단어들의 가중치를 높임
     },
     // 교육
     education: {
