@@ -103,12 +103,11 @@ async function loadFrequentWords() {
 // 꼬맨틀 방식의 실제 코사인 유사도 계산 (word2vec.py 참고)
 async function calculateRealVectorSimilarity(word1, word2) {
   try {
-    // 벡터 DB에서 실제 벡터 기반 유사도 계산 시도
-    const response = await fetch('/.netlify/functions/vector-db', {
+    // 🚀 서버의 실제 FastText API를 직접 호출
+    const response = await fetch('http://localhost:5000/api/words/similarity', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'similarity',
         word1: word1,
         word2: word2
       })
@@ -116,15 +115,16 @@ async function calculateRealVectorSimilarity(word1, word2) {
     
     if (response.ok) {
       const result = await response.json();
-      console.log(`🎯 Real vector similarity: ${word1} ↔ ${word2} = ${(result.similarity * 100).toFixed(2)}%`);
-      return result.similarity * 100; // 0-100 범위로 변환
+      console.log(`🎯 Real FastText similarity: ${word1} ↔ ${word2} = ${result.similarity}점 (cosine=${result.cosine})`);
+      return result.similarity; // 이미 0-100 스케일
     }
   } catch (error) {
-    console.log(`⚠️ Vector DB unavailable, using fallback for: ${word1} ↔ ${word2}`);
+    console.log(`⚠️ FastText API unavailable, using fallback for: ${word1} ↔ ${word2}`);
   }
   
-  // 벡터 DB 실패시 기존 한국어 유사도 계산으로 fallback
-  return calculateKoreanSimilarity(word1, word2);
+  // FastText API 실패시 기존 한국어 유사도 계산으로 fallback (음수 방지)
+  const fallbackScore = calculateKoreanSimilarity(word1, word2);
+  return Math.max(0, fallbackScore); // 음수 방지!
 }
 
 // 기존 한국어 유사도 계산 (백업용)
@@ -167,8 +167,8 @@ function simulateCosineSimilarity(word1, word2, baseSim) {
     // 중간 의미적 유사도 -> 낮은 코사인 유사도  
     return 10 + Math.random() * 30; // 10-40
   } else {
-    // 낮은 의미적 유사도 -> 매우 낮은 코사인 유사도
-    return -30 + Math.random() * 40; // -30 ~ 10
+    // 낮은 의미적 유사도 -> 매우 낮은 코사인 유사도 (음수 방지!)
+    return 0 + Math.random() * 15; // 0 ~ 15 (최소 0점 보장)
   }
 }
 

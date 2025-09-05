@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { FastTextLoader, fastTextLoader } from './fastTextLoader';
 import { directFastText } from './directFastText';
+import { koreanDictionary } from './koreanDictionary';
 
 interface WordVector {
   word: string;
@@ -39,13 +40,29 @@ class Word2VecService {
   // Try to load FastText vectors if available
   private async tryLoadFastText(): Promise<void> {
     try {
-      // Load key words first for testing
-      const keyWords = ['시간', '시계', '사과', '바나나', '컴퓨터', '전화', '자동차', '집'];
+      // TARGET_WORDS from StaticGame.tsx - 게임에서 사용되는 모든 목표 단어
+      const TARGET_WORDS = [
+        "가족", "어머니", "아버지", "부모", "형제", "자매", "친구", "사랑", "행복", "기쁨",
+        "자연", "나무", "꽃", "산", "바다", "강", "하늘", "별", "달", "태양",
+        "음식", "집", "학교", "회사", "시간", "오늘", "내일", "아침", "저녁", "밤",
+        "생각", "문제", "방법", "이유", "결과", "변화", "성장", "경험", "기회", "희망",
+        "사회", "문화", "교육", "정치", "기술", "과학", "예술", "운동", "여행", "음악"
+      ];
+      
+      // 봇 단어들 - 게임에서 봇이 사용하는 단어들
+      const BOT_WORDS = [
+        "우주", "세상", "마음", "인생", "세계", "사람", "나라", "지구", "미래", "과거",
+        "현실", "꿈", "소망", "목표", "계획", "준비", "시작", "완성", "성취", "발전",
+        "창조", "발견", "탐구", "연구", "학습", "지식", "지혜", "이해", "깨달음", "성찰"
+      ];
+
       const fastTextPath = path.join(process.cwd(), 'data', 'fasttext', 'cc.ko.300.vec');
       
-      // Load more time-related words for better comparison
-      const timeWords = ['시간', '시계', '벽시계', '분', '초', '시각', '때', '순간', '날짜', '년도', '오늘', '내일', '어제'];
-      await directFastText.loadVectors(fastTextPath, [...keyWords, ...timeWords]);
+      // 핵심: 모든 게임 관련 단어들을 미리 로드
+      const allGameWords = [...TARGET_WORDS, ...BOT_WORDS];
+      
+      console.log(`🎯 Loading ${allGameWords.length} game words from FastText...`);
+      await directFastText.loadVectors(fastTextPath, allGameWords);
       
       console.log(`🚀 DirectFastText enabled with key words`);
       this.useFastText = true;
@@ -109,8 +126,36 @@ class Word2VecService {
     }
   }
 
-  // Load Korean frequent words from file
+  // Load Korean frequent words from dictionary instead of manual file
   private async loadKoreanWords(): Promise<void> {
+    try {
+      // Try to load from Korean dictionary first
+      await koreanDictionary.init();
+      const dictStats = koreanDictionary.getDictionaryStats();
+      
+      if (dictStats.isLoaded && dictStats.totalWords > 0) {
+        // Extract common Korean words from dictionary
+        // Filter for typical Korean words (2-4 characters, common patterns)
+        const allDictWords = koreanDictionary.getAllWords();
+        this.frequentWords = allDictWords
+          .filter((word: string) => {
+            // Filter for reasonable Korean words
+            return word.length >= 2 && 
+                   word.length <= 4 && 
+                   /^[가-힣]+$/.test(word) && // Only Hangul
+                   !word.includes('ㅇ') && // Avoid partial characters
+                   !word.includes('ㄱ'); // Avoid partial characters
+          })
+          .slice(0, 1000); // Take top 1000
+        
+        console.log(`✅ Extracted ${this.frequentWords.length} frequent words from Korean dictionary`);
+        return;
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not use Korean dictionary, trying file fallback');
+    }
+
+    // Fallback to existing file method
     try {
       const wordsFilePath = path.join(process.cwd(), 'data', 'korean_frequent_words.txt');
       const content = fs.readFileSync(wordsFilePath, 'utf-8');
@@ -148,7 +193,7 @@ class Word2VecService {
   }
 
   private loadSampleVectors() {
-    // Use frequent words from file instead of hardcoded list
+    // Use frequent words from Korean dictionary instead of manual list
     const wordsToUse = this.frequentWords.length > 0 ? this.frequentWords : [
       // Fallback words if file loading failed
       '것', '하다', '있다', '되다', '나', '없다', '사람', '우리', '아니다', '같다',
@@ -181,6 +226,18 @@ class Word2VecService {
   }
 
   async calculateSimilarity(word1: string, word2: string): Promise<SimilarityResult> {
+    console.log(`💫💫💫 WORD2VEC SERVICE ENTRY POINT: "${word1}" vs "${word2}"`);
+    
+    // Validate words using Korean dictionary first
+    if (!koreanDictionary.isValidKoreanWord(word1)) {
+      console.warn(`⚠️ Invalid Korean word: ${word1}`);
+      // Don't throw error, just warn - let the game continue for now
+    }
+    if (!koreanDictionary.isValidKoreanWord(word2)) {
+      console.warn(`⚠️ Invalid Korean word: ${word2}`);
+      // Don't throw error, just warn - let the game continue for now  
+    }
+    
     // Exact match
     if (word1 === word2) {
       return { similarity: 100, rank: "정답!" };
@@ -193,14 +250,22 @@ class Word2VecService {
         const vec2 = await directFastText.getVector(word2);
         
         if (vec1 && vec2) {
+          console.log(`🚀 PATH 1 - On-demand loading: "${word1}" vs "${word2}"`);
           const similarity = directFastText.calculateCosineSimilarity(vec1, vec2);
-          const score = Math.max(0, Math.round(similarity * 100));
           
-          console.log(`🎯 DirectFastText (on-demand): "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score}`);
+          // 🎯 NewsJelly semantle-ko와 유사한 스케일로 조정
+          // 원본에서는 brother-son이 83.80점인데 우리는 21점 → 약 4배 차이
+          // 실험적으로 스케일 팩터 적용 (가족 관계 단어들을 기준으로)
+          // Scale factor to match NewsJelly scoring (brother-son: 83.80 target)
+          const scaleFactor = 2.0; // Temporarily reduced to test if clamping exists
+          const rawScore = similarity * 100;
+          const adjustedScore = Math.max(0, Math.round(rawScore * scaleFactor));
+          
+          console.log(`🚀🚀🚀 SCALE FACTOR APPLIED: "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → raw=${Math.round(rawScore)} → SCALED=${adjustedScore}`);
           
           return {
-            similarity: score,
-            rank: this.getRankFromScore(score)
+            similarity: adjustedScore,
+            rank: this.getRankFromScore(adjustedScore)
           };
         }
       } catch (error) {
@@ -213,16 +278,20 @@ class Word2VecService {
 
     // Try DirectFastText first
     if (this.useFastText && directFastText.hasWord(word1) && directFastText.hasWord(word2)) {
+      console.log(`🚀 PATH 2 - Cached vectors: "${word1}" vs "${word2}"`);
       const similarity = directFastText.cosineSimilarity(word1, word2);
       
-      // semantle-ko와 완전히 동일한 방식: 코사인 유사도에 100을 곱함
-      const score = Math.max(0, Math.round(similarity * 100));
+      // 🎯 NewsJelly semantle-ko와 유사한 스케일로 조정
+      // brother-son: 원본 83.80점, 우리 36점 → 83.80/36 = 2.33배 조정
+      const scaleFactor = 2.0; // Temporarily reduced to test if clamping exists
+      const rawScore = similarity * 100;
+      const adjustedScore = Math.max(0, Math.round(rawScore * scaleFactor));
       
-      console.log(`🎯 DirectFastText: "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → score=${score}`);
+      console.log(`🚀🚀🚀 SCALE FACTOR (cached): "${word1}" vs "${word2}" cosine=${similarity.toFixed(6)} → raw=${Math.round(rawScore)} → SCALED=${adjustedScore}`);
       
       return {
-        similarity: score,
-        rank: this.getRankFromScore(score)
+        similarity: adjustedScore,
+        rank: this.getRankFromScore(adjustedScore)
       };
     }
 

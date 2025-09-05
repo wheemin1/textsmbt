@@ -38,8 +38,8 @@ export default defineConfig(async () => ({
   root: path.resolve(import.meta.dirname, "client"),
   publicDir: path.resolve(import.meta.dirname, "client", "public"),
   build: {
-    outDir: path.resolve(import.meta.dirname, "client/dist"),
-    emptyOutDir: true,
+    outDir: path.resolve(import.meta.dirname, "dist"),
+    emptyOutDir: false, // Don't empty since server index.js is also here
     sourcemap: false,
     rollupOptions: {
       output: {

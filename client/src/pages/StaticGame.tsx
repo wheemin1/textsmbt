@@ -65,8 +65,13 @@ const calculateSimilarity = async (
   if (word1 === word2) return { similarity: 100 };
   
   try {
-    // Netlify Functions 엔드포인트 사용
-    const response = await fetch("/.netlify/functions/similarity", {
+    // 🚀 로컬 개발에서는 Express 서버 사용, 프로덕션에서는 Netlify Functions 사용
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const endpoint = isLocal 
+      ? "http://localhost:3000/api/words/similarity"  // Express API
+      : "/.netlify/functions/similarity";              // Netlify Functions
+    
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -79,6 +84,7 @@ const calculateSimilarity = async (
     }
 
     const data = await response.json();
+    console.log(`🎯 Similarity API result: ${word1} vs ${word2} = ${data.similarity}점`);
     return {
       similarity: data.similarity || 0,
       stats: data.stats
@@ -86,7 +92,9 @@ const calculateSimilarity = async (
   } catch (error) {
     console.error("유사도 계산 오류:", error);
     // 오류 시 fallback으로 간단한 계산
-    return { similarity: calculateFallbackSimilarity(word1, word2) };
+    const fallbackScore = calculateFallbackSimilarity(word1, word2);
+    console.log(`⚠️ Using fallback: ${word1} vs ${word2} = ${fallbackScore}점`);
+    return { similarity: fallbackScore };
   }
 };
 
@@ -215,9 +223,10 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
     const playerScore = playerResult.similarity;
     const gameStats = playerResult.stats; // 꼬맨틀 스타일 통계
     
-    // 첫 번째 라운드에서 통계 설정
-    if (gameStats && !similarityStats) {
+    // 🎯 목표 단어별로 통계 업데이트 (첫 라운드가 아니어도)
+    if (gameStats) {
       setSimilarityStats(gameStats);
+      console.log(`📊 Updated stats for target "${target}": top=${gameStats.top}, top10=${gameStats.top10}`);
     }
     
     // 봇 단어 선택
@@ -226,18 +235,9 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
     const botResult = await calculateSimilarity(botWord, target);
     let botScore = botResult.similarity;
     
-    // 난이도별 봇 점수 조정
-    switch (currentGameState.difficulty) {
-      case "easy":
-        botScore = Math.min(botScore, 60 + Math.random() * 20);
-        break;
-      case "medium":
-        botScore = Math.min(botScore, 75 + Math.random() * 15);
-        break;
-      case "hard":
-        botScore = Math.min(botScore, 85 + Math.random() * 10);
-        break;
-    }
+    // 🎯 봇도 실제 FastText 기반 점수 사용 (인위적 조정 제거)
+    // 난이도별 조정 대신 실제 유사도 점수 그대로 사용
+    console.log(`🤖 Bot "${botWord}" vs target "${target}" = ${botScore}점 (실제 FastText 점수)`);
     botScore = Math.round(botScore);
 
     const roundResult = {
