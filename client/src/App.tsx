@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Home from "./pages/Home";
 import Landing from "./pages/Landing";
 import Game from "./pages/Game";
+import StaticGame from "./pages/StaticGame";
 import Settings from "./pages/Settings";
 import Leaderboard from "./pages/Leaderboard";
 import GameHistory from "./pages/GameHistory";
@@ -31,7 +32,7 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Home} />
-          <Route path="/game/:gameId" component={Game} />
+          <Route path="/game/:gameId" component={StaticGame} />
           <Route path="/settings" component={Settings} />
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/game-history" component={GameHistory} />

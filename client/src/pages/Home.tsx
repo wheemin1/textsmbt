@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { StaticGameEngine } from "@/lib/staticGameEngine";
 
 interface UserStats {
   gamesPlayed: number;
@@ -54,11 +55,16 @@ export default function Home() {
   };
 
   const handleBotGame = async (difficulty: string) => {
-    toast({
-      title: "봇 게임 준비 중", 
-      description: "AI 봇과의 게임 기능을 준비 중입니다.",
-      variant: "default",
-    });
+    try {
+      const gameState = await StaticGameEngine.startBotGame(difficulty as "easy" | "medium" | "hard");
+      setLocation(`/game/${gameState.gameId}`);
+    } catch (error: any) {
+      toast({
+        title: "게임 시작 실패",
+        description: error?.message || "게임을 시작할 수 없습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   const cancelMatchmaking = () => {
