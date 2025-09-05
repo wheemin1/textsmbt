@@ -51,6 +51,85 @@ function generateSemanticVector(concept, dimensions = 300, basePattern = []) {
   return vector;
 }
 
+// NumPy 스타일 최근접 검색 알고리즘 (꼬맨틀의 most_similar 함수)
+function mostSimilar(allVectors, targetVector, k = 1000) {
+  const similarities = [];
+  
+  // 모든 벡터와의 유사도 계산
+  for (const [word, vector] of allVectors) {
+    const similarity = calculateCosineSimilarity(targetVector, vector);
+    similarities.push({ word, similarity });
+  }
+  
+  // 유사도 기준으로 내림차순 정렬 (numpy의 argsort[::-1]과 동일)
+  similarities.sort((a, b) => b.similarity - a.similarity);
+  
+  // 상위 k개만 반환 (numpy의 argpartition과 유사)
+  const topK = similarities.slice(0, Math.min(k, similarities.length));
+  
+  return {
+    words: topK.map(item => item.word),
+    similarities: topK.map(item => item.similarity),
+    indices: topK.map((item, index) => index) // 정렬된 인덱스
+  };
+}
+
+// 꼬맨틀의 dump_nearest 함수 구현 (process_similar.py 참고)
+function dumpNearest(targetWord, allVectors, k = 1000) {
+  const targetVector = VECTOR_CACHE.get(targetWord);
+  if (!targetVector) {
+    throw new Error(`Target word "${targetWord}" not found in vector cache`);
+  }
+  
+  // 자기 자신을 제외한 벡터들로 최근접 검색
+  const otherVectors = Array.from(VECTOR_CACHE.entries())
+    .filter(([word, _]) => word !== targetWord);
+  
+  const nearestResult = mostSimilar(otherVectors, targetVector, k);
+  
+  // 꼬맨틀과 동일한 형태로 결과 구성: closeness[word] = (rank, similarity)
+  const closeness = {};
+  
+  nearestResult.words.forEach((word, index) => {
+    closeness[word] = [index + 1, nearestResult.similarities[index]]; // (순위, 유사도)
+  });
+  
+  // 정답 단어 추가 (꼬맨틀: closeness[word] = ("정답!", 1))
+  closeness[targetWord] = ["정답!", 1.0];
+  
+  return closeness;
+}
+
+// 꼬맨틀의 get_similarity 함수 구현 (semantle.py 참고)
+function calculateSimilarityStats(targetWord) {
+  try {
+    const closeness = dumpNearest(targetWord, VECTOR_CACHE);
+    
+    // 모든 유사도 값 추출하여 정렬 (꼬맨틀: sorted([v[1] for v in app.nearests[day].values()]))
+    const allSimilarities = Object.values(closeness)
+      .map(([rank, similarity]) => similarity)
+      .filter(sim => sim !== 1.0) // 정답 단어(1.0) 제외
+      .sort((a, b) => a - b); // 오름차순 정렬
+    
+    // 꼬맨틀과 동일한 통계 생성
+    const stats = {
+      top: allSimilarities[allSimilarities.length - 2] || 0.95,    // nearest_dists[-2]
+      top10: allSimilarities[allSimilarities.length - 11] || 0.75, // nearest_dists[-11]  
+      rest: allSimilarities[0] || 0.05,                            // nearest_dists[0]
+      totalWords: allSimilarities.length + 1, // +1 for target word
+      targetWord: targetWord
+    };
+    
+    console.log(`📊 Similarity stats for "${targetWord}": top=${(stats.top*100).toFixed(1)}%, top10=${(stats.top10*100).toFixed(1)}%, rest=${(stats.rest*100).toFixed(1)}%`);
+    
+    return stats;
+    
+  } catch (error) {
+    console.error(`Failed to calculate stats for "${targetWord}":`, error.message);
+    return null;
+  }
+}
+
 // 벡터 캐시 초기화 (꼬맨틀 주요 단어들)
 function initializeVectorCache() {
   if (isInitialized) return;
@@ -158,6 +237,91 @@ exports.handler = async (event, context) => {
           })
         };
         
+      case 'nearest':
+        // 꼬맨틀의 most_similar 함수 구현
+        if (!word1) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Missing target word (word1)' })
+          };
+        }
+        
+        try {
+          const closeness = dumpNearest(word1, VECTOR_CACHE);
+          const nearestWords = Object.entries(closeness)
+            .filter(([word, _]) => word !== word1) // 자기 자신 제외
+            .sort(([,a], [,b]) => b[1] - a[1]) // 유사도 기준 내림차순
+            .slice(0, 10); // 상위 10개만
+          
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              targetWord: word1,
+              nearestWords: nearestWords.map(([word, [rank, sim]]) => ({
+                word,
+                rank,
+                similarity: sim,
+                similarityPercent: sim * 100
+              })),
+              method: 'numpy_style_nearest_search',
+              timestamp: new Date().toISOString()
+            })
+          };
+        } catch (error) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ 
+              error: 'Target word not found',
+              targetWord: word1,
+              message: error.message
+            })
+          };
+        }
+        
+      case 'stats':
+        // 꼬맨틀의 similarity stats 생성
+        if (!word1) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Missing target word (word1)' })
+          };
+        }
+        
+        const stats = calculateSimilarityStats(word1);
+        if (!stats) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ 
+              error: 'Could not generate stats',
+              targetWord: word1
+            })
+          };
+        }
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            targetWord: word1,
+            stats: {
+              top: stats.top,
+              top10: stats.top10,
+              rest: stats.rest,
+              topPercent: stats.top * 100,
+              top10Percent: stats.top10 * 100,
+              restPercent: stats.rest * 100
+            },
+            totalWords: stats.totalWords,
+            method: 'numpy_similarity_stats',
+            timestamp: new Date().toISOString()
+          })
+        };
+      
       case 'status':
         return {
           statusCode: 200,
@@ -174,7 +338,10 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Invalid action. Use "similarity" or "status"' })
+          body: JSON.stringify({ 
+            error: 'Invalid action', 
+            validActions: ['similarity', 'nearest', 'stats', 'status']
+          })
         };
     }
     

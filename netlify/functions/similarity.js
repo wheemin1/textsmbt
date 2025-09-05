@@ -409,38 +409,60 @@ function getLevenshteinDistance(str1, str2) {
   return matrix[str2.length][str1.length];
 }
 
-// 꼬맨틀 방식의 실제 유사도 통계 생성 (5474개 단어 기반)
+// 꼬맨틀 방식의 실제 유사도 통계 생성 (NumPy 기반)
 async function generateSimilarityStats(targetWord, frequentWords) {
-  console.log(`🎯 Generating similarity stats for target word: "${targetWord}"`);
+  console.log(`🎯 Generating numpy-based similarity stats for: "${targetWord}"`);
   
-  // 목표 단어와 모든 고빈도 단어 간의 유사도 계산
+  try {
+    // 벡터 DB의 numpy 스타일 통계 생성 시도
+    const response = await fetch('/.netlify/functions/vector-db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'stats',
+        word1: targetWord
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`📊 NumPy-based stats generated: top=${result.stats.topPercent.toFixed(1)}%, top10=${result.stats.top10Percent.toFixed(1)}%, rest=${result.stats.restPercent.toFixed(1)}%`);
+      
+      return {
+        top: result.stats.topPercent,
+        top10: result.stats.top10Percent,  
+        rest: result.stats.restPercent,
+        wordCount: result.totalWords,
+        targetWord: targetWord,
+        method: 'numpy_vector_based'
+      };
+    }
+  } catch (error) {
+    console.log(`⚠️ Vector-based stats unavailable for "${targetWord}", using fallback`);
+  }
+  
+  // 벡터 기반 통계 실패시 기존 방식으로 fallback
+  console.log(`🔄 Fallback: calculating stats with ${frequentWords.length} frequent words`);
+  
   const similarities = [];
   
-  for (const word of frequentWords.slice(0, 100)) { // 성능상 100개만 계산
-    if (word === targetWord) continue; // 자기 자신 제외
+  for (const word of frequentWords.slice(0, 50)) { // 성능상 50개만 계산
+    if (word === targetWord) continue;
     
-    // 🎯 벡터 기반 실제 유사도 계산 사용
-    const similarity = await calculateRealVectorSimilarity(word, targetWord); // 0-100 범위
+    const similarity = await calculateRealVectorSimilarity(word, targetWord);
     similarities.push(similarity);
   }
   
-  // 유사도 기준으로 내림차순 정렬 (가장 유사한 것부터)
   similarities.sort((a, b) => b - a);
   
-  // 꼬맨틀과 동일한 방식으로 통계 생성
-  // nearest_dists = sorted([v[1] for v in app.nearests[day].values()])
-  // {"top": nearest_dists[-2], "top10": nearest_dists[-11], "rest": nearest_dists[0]}
-  const stats = {
-    top: similarities[1] || 92.5,      // 2번째로 높은 유사도
-    top10: similarities[10] || 68.3,   // 11번째로 높은 유사도  
-    rest: similarities[similarities.length - 1] || 15.7,  // 가장 낮은 유사도
-    wordCount: frequentWords.length,
+  return {
+    top: similarities[1] || 92.5,      
+    top10: similarities[10] || 68.3,   
+    rest: similarities[similarities.length - 1] || 15.7,
+    wordCount: similarities.length + 1,
     targetWord: targetWord,
-    calculatedSamples: similarities.length
+    method: 'fallback_calculation'
   };
-  
-  console.log(`📊 Vector-based stats: top=${stats.top.toFixed(1)}, top10=${stats.top10.toFixed(1)}, rest=${stats.rest.toFixed(1)} (${stats.calculatedSamples} samples)`);
-  return stats;
 }
 
 // 꼬맨틀 스타일 순위 계산
