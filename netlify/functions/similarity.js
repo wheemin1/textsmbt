@@ -101,6 +101,33 @@ async function loadFrequentWords() {
 }
 
 // 꼬맨틀 방식의 실제 코사인 유사도 계산 (word2vec.py 참고)
+async function calculateRealVectorSimilarity(word1, word2) {
+  try {
+    // 벡터 DB에서 실제 벡터 기반 유사도 계산 시도
+    const response = await fetch('/.netlify/functions/vector-db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'similarity',
+        word1: word1,
+        word2: word2
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`🎯 Real vector similarity: ${word1} ↔ ${word2} = ${(result.similarity * 100).toFixed(2)}%`);
+      return result.similarity * 100; // 0-100 범위로 변환
+    }
+  } catch (error) {
+    console.log(`⚠️ Vector DB unavailable, using fallback for: ${word1} ↔ ${word2}`);
+  }
+  
+  // 벡터 DB 실패시 기존 한국어 유사도 계산으로 fallback
+  return calculateKoreanSimilarity(word1, word2);
+}
+
+// 기존 한국어 유사도 계산 (백업용)
 function calculateKoreanSimilarity(word1, word2) {
   if (word1 === word2) return 100.0;
   
@@ -389,10 +416,11 @@ async function generateSimilarityStats(targetWord, frequentWords) {
   // 목표 단어와 모든 고빈도 단어 간의 유사도 계산
   const similarities = [];
   
-  for (const word of frequentWords) {
+  for (const word of frequentWords.slice(0, 100)) { // 성능상 100개만 계산
     if (word === targetWord) continue; // 자기 자신 제외
     
-    const similarity = calculateKoreanSimilarity(word, targetWord); // 0-100 범위
+    // 🎯 벡터 기반 실제 유사도 계산 사용
+    const similarity = await calculateRealVectorSimilarity(word, targetWord); // 0-100 범위
     similarities.push(similarity);
   }
   
@@ -407,10 +435,11 @@ async function generateSimilarityStats(targetWord, frequentWords) {
     top10: similarities[10] || 68.3,   // 11번째로 높은 유사도  
     rest: similarities[similarities.length - 1] || 15.7,  // 가장 낮은 유사도
     wordCount: frequentWords.length,
-    targetWord: targetWord
+    targetWord: targetWord,
+    calculatedSamples: similarities.length
   };
   
-  console.log(`📊 Stats generated: top=${stats.top.toFixed(1)}, top10=${stats.top10.toFixed(1)}, rest=${stats.rest.toFixed(1)} (${frequentWords.length} words)`);
+  console.log(`📊 Vector-based stats: top=${stats.top.toFixed(1)}, top10=${stats.top10.toFixed(1)}, rest=${stats.rest.toFixed(1)} (${stats.calculatedSamples} samples)`);
   return stats;
 }
 
@@ -497,8 +526,8 @@ exports.handler = async (event, context) => {
     // 🚀 꼬맨틀 5474개 단어 로딩
     const frequentWords = await loadFrequentWords();
     
-    // 꼬맨틀 스타일 유사도 계산
-    const similarity = calculateKoreanSimilarity(word1.trim(), word2.trim());
+    // 🎯 벡터 DB 기반 실제 유사도 계산 (꼬맨틀과 동일한 방식)
+    const similarity = await calculateRealVectorSimilarity(word1.trim(), word2.trim());
     const rank = calculateRank(word1.trim(), word2.trim(), similarity);
     
     // 꼬맨틀 스타일 통계 (게임용) - 실제 5474개 단어 기반
