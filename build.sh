@@ -6,16 +6,25 @@ echo "🚀 Starting SemantleKo build process..."
 echo "Node.js version: $(node --version)"
 echo "NPM version: $(npm --version)"
 
-# Install dependencies
-echo "📦 Installing dependencies..."
-npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+# Use client-only package.json for build
+echo "📦 Installing client dependencies only..."
+cp package-client.json package.json
+npm ci --legacy-peer-deps
+
+# Verify Vite installation
+echo "📋 Checking Vite installation..."
+npx vite --version
 
 # Build the client
 echo "🔨 Building client application..."
-npm run build:client
+npx vite build
 
 # Verify build output
 echo "✅ Verifying build output..."
-ls -la client/dist/
-
-echo "🎉 Build completed successfully!"
+if [ -d "client/dist" ]; then
+    ls -la client/dist/
+    echo "🎉 Build completed successfully!"
+else
+    echo "❌ Build failed - client/dist directory not found"
+    exit 1
+fi
