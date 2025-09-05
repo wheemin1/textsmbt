@@ -5,7 +5,7 @@
   # Build settings
   base = ""
   publish = "client/dist"
-  command = "cp package-client.json package.json && npm install --legacy-peer-deps --include=dev && npx vite build"
+  command = "cp package-client.json package.json && npm install --legacy-peer-deps --include=dev && npm run build:netlify"
   functions = "netlify/functions"
   
   # Build environment
