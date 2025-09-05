@@ -478,5 +478,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calculate similarity between two words
+  app.post("/api/words/similarity", async (req, res) => {
+    try {
+      const { word1, word2 } = req.body;
+      
+      if (!word1 || !word2) {
+        return res.status(400).json({ error: "MISSING_WORDS", message: "두 단어를 모두 입력해주세요" });
+      }
+
+      const result = await word2vecService.calculateSimilarity(word1, word2);
+      
+      res.json({
+        word1,
+        word2,
+        similarity: result.similarity,
+        rank: result.rank
+      });
+    } catch (error) {
+      console.error('Calculate similarity error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "유사도 계산 중 오류가 발생했습니다" });
+    }
+  });
+
   return httpServer;
 }

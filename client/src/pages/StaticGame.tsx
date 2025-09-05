@@ -38,20 +38,46 @@ const BOT_WORDS = {
   hard: ["연애", "즐거움", "벗", "혈연", "생태", "멜로디", "탐험", "포부", "조화", "염원"]
 };
 
-// 간단한 유사도 계산
-const calculateSimilarity = (word1: string, word2: string): number => {
+// 실제 FastText 기반 유사도 계산
+const calculateSimilarity = async (word1: string, word2: string): Promise<number> => {
+  if (word1 === word2) return 100;
+  
+  try {
+    const response = await fetch("/api/words/similarity", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ word1, word2 }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.similarity || 0;
+  } catch (error) {
+    console.error("유사도 계산 오류:", error);
+    // 오류 시 fallback으로 간단한 계산
+    return calculateFallbackSimilarity(word1, word2);
+  }
+};
+
+// Fallback 유사도 계산 (API 실패 시)
+const calculateFallbackSimilarity = (word1: string, word2: string): number => {
   if (word1 === word2) return 100;
   
   // 글자 포함 여부로 간단한 유사도 계산
   let score = 0;
   for (let char of word1) {
-    if (word2.includes(char)) score += 20;
+    if (word2.includes(char)) score += 15;
   }
   
   // 길이 유사성
-  const lengthSimilarity = Math.max(0, 20 - Math.abs(word1.length - word2.length) * 5);
+  const lengthSimilarity = Math.max(0, 15 - Math.abs(word1.length - word2.length) * 3);
   
-  return Math.min(100, score + lengthSimilarity + Math.random() * 30);
+  return Math.min(80, score + lengthSimilarity + Math.random() * 10);
 };
 
 export default function StaticGame({ params }: { params: { gameId: string } }) {
@@ -103,8 +129,8 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
         
         const newTime = prev.timeRemaining - 1;
         if (newTime <= 0) {
-          // 시간 초과 시 자동 제출
-          handleAutoSubmit(prev);
+          // 시간 초과 시 자동 제출 (비동기 호출)
+          handleAutoSubmit(prev).catch(console.error);
           return prev;
         }
         
@@ -115,19 +141,19 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
     return () => clearInterval(timer);
   }, [params.gameId, toast, setLocation]);
 
-  const handleAutoSubmit = (currentGameState: SimpleGameState) => {
+  const handleAutoSubmit = async (currentGameState: SimpleGameState) => {
     // 시간 초과 시 빈 단어로 처리
-    submitRound(currentGameState, "");
+    await submitRound(currentGameState, "");
   };
 
-  const submitRound = (currentGameState: SimpleGameState, word: string) => {
+  const submitRound = async (currentGameState: SimpleGameState, word: string) => {
     const target = currentGameState.currentTarget || "";
-    const playerScore = word ? calculateSimilarity(word, target) : 0;
+    const playerScore = word ? await calculateSimilarity(word, target) : 0;
     
     // 봇 단어 선택
     const botWordList = BOT_WORDS[currentGameState.difficulty as keyof typeof BOT_WORDS] || BOT_WORDS.easy;
     const botWord = botWordList[currentGameState.currentRound - 1] || botWordList[0];
-    let botScore = calculateSimilarity(botWord, target);
+    let botScore = await calculateSimilarity(botWord, target);
     
     // 난이도별 봇 점수 조정
     switch (currentGameState.difficulty) {
@@ -217,7 +243,7 @@ export default function StaticGame({ params }: { params: { gameId: string } }) {
     
     setIsSubmitting(true);
     try {
-      submitRound(gameState, currentWord.trim());
+      await submitRound(gameState, currentWord.trim());
       setCurrentWord("");
     } finally {
       setIsSubmitting(false);
