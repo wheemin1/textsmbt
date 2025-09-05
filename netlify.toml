@@ -1,13 +1,17 @@
+# Netlify configuration file
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
 [build]
   # Build settings
+  base = ""
   publish = "client/dist"
-  command = "npm install && npm run build:client"
+  command = "chmod +x build.sh && ./build.sh"
   
   # Build environment
   [build.environment]
-    NODE_VERSION = "18"
+    NODE_VERSION = "18.17.0"
     NODE_ENV = "production"
-    NPM_FLAGS = "--prefer-offline --no-audit"
+    NPM_FLAGS = "--legacy-peer-deps"
 
 # Build processing settings
 [build.processing]
