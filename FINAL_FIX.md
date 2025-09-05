@@ -9,18 +9,23 @@
 ## ✅ 핵심 변경사항
 
 ### 1. vite.config.ts - 조건부 플러그인 로딩
+
 ```typescript
 const loadReplitPlugins = async () => {
   // Netlify 환경에서는 Replit 플러그인을 로드하지 않음
   if (process.env.NETLIFY || process.env.NODE_ENV === "production") {
     return [];
   }
-  
+
   try {
     // Replit 플러그인 로드 시도
-    const runtimeErrorOverlay = (await import("@replit/vite-plugin-runtime-error-modal")).default;
-    const cartographer = await import("@replit/vite-plugin-cartographer").then((m) => m.cartographer());
-    
+    const runtimeErrorOverlay = (
+      await import("@replit/vite-plugin-runtime-error-modal")
+    ).default;
+    const cartographer = await import("@replit/vite-plugin-cartographer").then(
+      (m) => m.cartographer()
+    );
+
     return [
       runtimeErrorOverlay(),
       ...(process.env.REPL_ID !== undefined ? [cartographer] : []),
@@ -34,12 +39,14 @@ const loadReplitPlugins = async () => {
 ```
 
 ### 2. netlify.toml - 환경 변수 추가
+
 ```toml
 [build.environment]
   NETLIFY = "true"  # ← 명확한 환경 감지
 ```
 
 ### 3. package-client.json - 완전한 의존성
+
 - ✅ 모든 필수 라이브러리 포함
 - ✅ `vite` 및 빌드 도구 포함
 - ✅ Replit 의존성 제외
@@ -70,5 +77,6 @@ $ npx vite build                  # ✅ vite.config.ts 조건부 로딩
 - ✅ **로컬 호환**: Replit 개발 환경도 그대로 지원
 
 ---
+
 **최종 수정**: 2025-09-05 오후  
 **전략**: 조건부 플러그인 로딩으로 환경 호환성 확보
