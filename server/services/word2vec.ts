@@ -1,10 +1,9 @@
-// Korean word similarity service based on Semantle-ko's approach
-// Uses proper cosine similarity calculation like semantle-ko's word2vec.py
+// Korean word similarity service using VectorDB (Semantle-ko architecture)
+// Replaces file-based FastText loading with efficient SQLite database
 
 import fs from 'fs';
 import path from 'path';
-import { FastTextLoader, fastTextLoader } from './fastTextLoader';
-import { directFastText } from './directFastText';
+import { vectorDB } from './vectorDB';
 import { koreanDictionary } from './koreanDictionary';
 
 interface WordVector {
@@ -18,11 +17,10 @@ interface SimilarityResult {
 }
 
 class Word2VecService {
-  private wordVectors: Map<string, number[]> = new Map();
   private isLoaded = false;
   private frequentWords: string[] = [];
-  private similarityMatrix: Map<string, number> = new Map();
-  private useFastText = false;
+  private useVectorDB = false;
+  private fallbackMatrix: Map<string, number> = new Map();
 
   constructor() {
     this.init();
@@ -31,23 +29,32 @@ class Word2VecService {
   async init() {
     if (!this.isLoaded) {
       await this.loadKoreanWords();
-      await this.loadSimilarityMatrix();
-      await this.tryLoadFastText();
-      this.loadSampleVectors();
+      await this.tryInitVectorDB();
+      this.loadFallbackSimilarities();
     }
   }
 
-  // Try to load FastText vectors if available
-  private async tryLoadFastText(): Promise<void> {
+  // Try to initialize VectorDB (Semantle-ko style)
+  private async tryInitVectorDB(): Promise<void> {
     try {
-      // TARGET_WORDS from StaticGame.tsx - 게임에서 사용되는 모든 목표 단어
-      const TARGET_WORDS = [
-        "가족", "어머니", "아버지", "부모", "형제", "자매", "친구", "사랑", "행복", "기쁨",
-        "자연", "나무", "꽃", "산", "바다", "강", "하늘", "별", "달", "태양",
-        "음식", "집", "학교", "회사", "시간", "오늘", "내일", "아침", "저녁", "밤",
-        "생각", "문제", "방법", "이유", "결과", "변화", "성장", "경험", "기회", "희망",
-        "사회", "문화", "교육", "정치", "기술", "과학", "예술", "운동", "여행", "음악"
-      ];
+      await vectorDB.initialize();
+      
+      // Test if VectorDB has data
+      const testVector = await vectorDB.getWordVector('자연');
+      if (testVector) {
+        this.useVectorDB = true;
+        console.log('✅ VectorDB loaded successfully - using real FastText vectors');
+        console.log(`📊 Vector dimensions: ${testVector.length}`);
+      } else {
+        console.log('⚠️  VectorDB is empty - falling back to pattern matching');
+        this.useVectorDB = false;
+      }
+    } catch (error) {
+      console.log('⚠️  VectorDB initialization failed - using fallback similarity');
+      console.log('💡 Run: node scripts/initVectorDB.mjs to setup database');
+      this.useVectorDB = false;
+    }
+  }
       
       // 봇 단어들 - 게임에서 봇이 사용하는 단어들
       const BOT_WORDS = [

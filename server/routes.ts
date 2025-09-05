@@ -4,6 +4,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { gameEngine } from "./services/gameEngine";
 import { word2vecService } from "./services/word2vec";
+import { word2vec as vectorBasedWord2Vec } from "./services/word2vecDB"; // New VectorDB service
+import { vectorDB } from "./services/vectorDB"; // Direct VectorDB access
 import { similarityStatsService } from "./services/similarityStats";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
@@ -336,7 +338,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get word suggestions for autocomplete
+  // ============ NEW: VectorDB 기반 API 엔드포인트들 ============
+  
+  // VectorDB 시스템 상태 확인
+  app.get("/api/vectordb/status", async (req, res) => {
+    try {
+      const systemInfo = vectorBasedWord2Vec.getSystemInfo();
+      
+      res.json({
+        ...systemInfo,
+        message: systemInfo.hasRealVectors 
+          ? "✅ VectorDB 시스템 정상 작동 중 (실제 FastText 벡터 사용)"
+          : "⚠️ Fallback 모드 (패턴 기반 유사도 계산)",
+        recommendation: systemInfo.hasRealVectors 
+          ? null 
+          : "더 정확한 유사도 계산을 위해 'node scripts/initVectorDB.mjs' 실행을 권장합니다"
+      });
+    } catch (error) {
+      console.error('VectorDB status error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "VectorDB 상태 확인 중 오류가 발생했습니다" });
+    }
+  });
+
+  // VectorDB 직접 유사도 계산 (고급 사용자용)
+  app.post("/api/vectordb/similarity", async (req, res) => {
+    try {
+      const { word1, word2 } = req.body;
+      
+      if (!word1 || !word2) {
+        return res.status(400).json({ 
+          error: "MISSING_WORDS", 
+          message: "word1과 word2 파라미터가 필요합니다" 
+        });
+      }
+
+      // VectorDB 직접 계산
+      const directSimilarity = await vectorDB.calculateSimilarity(word1, word2);
+      
+      // 기존 시스템과 비교
+      const fallbackSimilarity = await vectorBasedWord2Vec.calculateSimilarity(word1, word2);
+      
+      // 단어 벡터 존재 여부 확인
+      const word1Vector = await vectorDB.getWordVector(word1);
+      const word2Vector = await vectorDB.getWordVector(word2);
+      
+      res.json({
+        word1,
+        word2,
+        directSimilarity: Math.round(directSimilarity),
+        fallbackSimilarity: Math.round(fallbackSimilarity),
+        hasRealVectors: !!(word1Vector && word2Vector),
+        vectorDimensions: word1Vector ? word1Vector.length : null,
+        method: (word1Vector && word2Vector) ? "FastText 벡터" : "패턴 매칭"
+      });
+    } catch (error) {
+      console.error('VectorDB similarity error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "유사도 계산 중 오류가 발생했습니다" });
+    }
+  });
+
+  // 단어와 가장 유사한 상위 N개 단어 조회 (Semantle-ko 스타일)
+  app.get("/api/vectordb/similar/:word", async (req, res) => {
+    try {
+      const { word } = req.params;
+      const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
+      
+      if (!word) {
+        return res.status(400).json({ error: "MISSING_WORD", message: "단어가 필요합니다" });
+      }
+
+      // VectorDB에서 유사 단어 조회
+      const similarWords = await vectorBasedWord2Vec.getSimilarWords(word, limit);
+      
+      // 각 단어의 정확한 유사도 계산
+      const wordsWithScores = [];
+      for (const similarWord of similarWords) {
+        const similarity = await vectorBasedWord2Vec.calculateSimilarity(word, similarWord);
+        wordsWithScores.push({
+          word: similarWord,
+          similarity: Math.round(similarity),
+          rank: wordsWithScores.length + 1
+        });
+      }
+
+      res.json({
+        targetWord: word,
+        similarWords: wordsWithScores,
+        totalFound: wordsWithScores.length,
+        method: vectorBasedWord2Vec.getSystemInfo().hasRealVectors ? "VectorDB" : "패턴 매칭"
+      });
+    } catch (error) {
+      console.error('Get similar words error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "유사 단어 조회 중 오류가 발생했습니다" });
+    }
+  });
+
+  // 단어 벡터 직접 조회 (개발/디버깅용)
+  app.get("/api/vectordb/vector/:word", async (req, res) => {
+    try {
+      const { word } = req.params;
+      
+      if (!word) {
+        return res.status(400).json({ error: "MISSING_WORD", message: "단어가 필요합니다" });
+      }
+
+      const vector = await vectorDB.getWordVector(word);
+      const isValid = await vectorBasedWord2Vec.isValidWord(word);
+      
+      res.json({
+        word,
+        hasVector: !!vector,
+        isValidWord: isValid,
+        vectorLength: vector ? vector.length : 0,
+        vectorPreview: vector ? vector.slice(0, 10) : null, // 처음 10개 차원만 미리보기
+      });
+    } catch (error) {
+      console.error('Get word vector error:', error);
+      res.status(500).json({ error: "SERVER_ERROR", message: "단어 벡터 조회 중 오류가 발생했습니다" });
+    }
+  });
+
+  // ============ 기존 API 엔드포인트들 ============
   app.get("/api/words/suggest", (req, res) => {
     try {
       const { q, limit } = req.query;
